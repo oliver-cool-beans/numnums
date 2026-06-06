@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /Users/oliver/Documents/github/numnums/apps/customer/src/app/dashboard/recipes/\\\\[id\\\\])"
+    ],
+    "additionalDirectories": [
+      "/Users/oliver/Documents/github/numnums/apps/customer/src/app/dashboard/recipes"
+    ]
+  }
+}

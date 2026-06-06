@@ -1,0 +1,389 @@
+[
+  {
+    "id": "6a19317d086124a9da693700",
+    "name": "Crispy Mexican Double Pulled Pork Taquitos",
+    "slug": "crispy-mexican-double-pulled-pork-taquitos",
+    "headline": "with Cucumber Salsa",
+    "description": null,
+    "imageUrl": null,
+    "websiteUrl": "https://www.everyplate.com.au/recipes/crispy-mexican-double-pulled-pork-taquitos-6a19317d086124a9da693700",
+    "country": "AO",
+    "category": null,
+    "prepMinutes": 30,
+    "totalMinutes": 15,
+    "difficulty": 1,
+    "servings": 2,
+    "servingSize": 583,
+    "averageRating": 0,
+    "ratingsCount": 0,
+    "favoritesCount": 0,
+    "uniqueRecipeCode": "EP21101-DP-3-4",
+    "isActive": false,
+    "isPublished": false,
+    "isAddon": false,
+    "sourceCreatedAt": "2026-05-29T06:57:10+00:00",
+    "sourceUpdatedAt": "2026-05-29T06:57:11+00:00",
+    "ingredients": [
+      {
+        "externalId": "657238553405d840b2be3ce3",
+        "externalUuid": "33029324-f0e0-5e63-9f6f-3934ffe1bf83",
+        "name": "Garlic",
+        "type": "garlic",
+        "slug": "garlic",
+        "country": "AO",
+        "imageUrl": "https://d3hvwccx09j84u.cloudfront.net/200,200/ingredient/657238553405d840b2be3ce3-4e865f84.png",
+        "shipped": true,
+        "family": {
+          "name": "none",
+          "slug": "none",
+          "type": "none"
+        },
+        "quantity": 2,
+        "unit": null
+      },
+      {
+        "externalId": "657238193405d840b2be3bab",
+        "externalUuid": "0669dd0d-49ca-4e6d-a144-75632b22b136",
+        "name": "Spring Onion",
+        "type": "spring-onions",
+        "slug": "spring-onion",
+        "country": "AO",
+        "imageUrl": "https://d3hvwccx09j84u.cloudfront.net/200,200/ingredient/657238193405d840b2be3bab-e8da1b4d.png",
+        "shipped": true,
+        "family": {
+          "name": "none",
+          "slug": "none",
+          "type": "none"
+        },
+        "quantity": 1,
+        "unit": null
+      },
+      {
+        "externalId": "6a16485e3519564cfc17a127",
+        "externalUuid": "627f3d79-c5fb-54b8-913c-fc66b0b7b010",
+        "name": "Mini Flour Tortillas",
+        "type": "mini-flour-tortillas",
+        "slug": "mini-flour-tortillas",
+        "country": "AO",
+        "imageUrl": "https://d3hvwccx09j84u.cloudfront.net/200,200/ingredient/6572379a105c9621030b4c68-7ea9b6d2.png",
+        "shipped": true,
+        "family": {
+          "name": "none",
+          "slug": "none",
+          "type": "none"
+        },
+        "quantity": 6,
+        "unit": null
+      },
+      {
+        "externalId": "657237e7b33a6ad8f0f05b06",
+        "externalUuid": "3559dbc0-ce03-45e2-bd28-ecf366433158",
+        "name": "Pulled Pork",
+        "type": "pulled-pork",
+        "slug": "pulled-pork",
+        "country": "AO",
+        "imageUrl": "https://d3hvwccx09j84u.cloudfront.net/200,200/ingredient/657237e7b33a6ad8f0f05b06-05d4c65b.png",
+        "shipped": true,
+        "family": {
+          "name": "none",
+          "slug": "none",
+          "type": "none"
+        },
+        "quantity": 500,
+        "unit": "g"
+      },
+      {
+        "externalId": "657236e2105c9621030b48ad",
+        "externalUuid": "ea7e269a-1683-5a72-8662-0aec297bc7f3",
+        "name": "Brown Onion",
+        "type": "brown-onion",
+        "slug": "brown-onion",
+        "country": "AO",
+        "imageUrl": "https://d3hvwccx09j84u.cloudfront.net/200,200/ingredient/657236e2105c9621030b48ad-c3df117a.png",
+        "shipped": true,
+        "family": {
+          "name": "none",
+          "slug": "none",
+          "type": "none"
+        },
+        "quantity": 1,
+        "unit": null
+      },
+      {
+        "externalId": "67f834dd4264524ca978b575",
+        "externalUuid": "777da529-d34d-423c-be21-29beba3d4a23",
+        "name": "Tex-Mex Spice Blend",
+        "type": "tex-mex-spice-mix",
+        "slug": "tex-mex-spice-blend",
+        "country": "AO",
+        "imageUrl": "https://d3hvwccx09j84u.cloudfront.net/200,200/ingredient/67f834dd4264524ca978b575-257b89ef.png",
+        "shipped": true,
+        "family": {
+          "name": "none",
+          "slug": "none",
+          "type": "none"
+        },
+        "quantity": 1,
+        "unit": "sachet"
+      },
+      {
+        "externalId": "657238323405d840b2be3c2c",
+        "externalUuid": "2b8e8dc5-b550-51c3-9bff-6bb586aabd27",
+        "name": "Tomato Paste",
+        "type": "tomato-paste",
+        "slug": "tomato-paste",
+        "country": "AO",
+        "imageUrl": "https://d3hvwccx09j84u.cloudfront.net/200,200/ingredient/657238323405d840b2be3c2c-6397d662.png",
+        "shipped": true,
+        "family": {
+          "name": "none",
+          "slug": "none",
+          "type": "none"
+        },
+        "quantity": 1,
+        "unit": "packet"
+      },
+      {
+        "externalId": "65723728b33a6ad8f0f057a8",
+        "externalUuid": "822e0f6e-0b50-54d0-9774-fee0a98b0271",
+        "name": "Cucumber",
+        "type": "cucumber",
+        "slug": "cucumber",
+        "country": "AO",
+        "imageUrl": "https://d3hvwccx09j84u.cloudfront.net/200,200/ingredient/65723728b33a6ad8f0f057a8-5467e0d1.png",
+        "shipped": true,
+        "family": {
+          "name": "none",
+          "slug": "none",
+          "type": "none"
+        },
+        "quantity": 1,
+        "unit": null
+      },
+      {
+        "externalId": "6572384f105c9621030b5045",
+        "externalUuid": "74465e54-fa3b-5202-b7f2-b465297bb828",
+        "name": "Carrot",
+        "type": "carrot",
+        "slug": "carrot",
+        "country": "AO",
+        "imageUrl": "https://d3hvwccx09j84u.cloudfront.net/200,200/ingredient/6572384f105c9621030b5045-a3312fa7.png",
+        "shipped": true,
+        "family": {
+          "name": "none",
+          "slug": "none",
+          "type": "none"
+        },
+        "quantity": 1,
+        "unit": null
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "instructions": "• Finely chop cucumber and garlic. Thinly slice spring onion and brown onion (see ingredients). Grate carrot."
+      },
+      {
+        "stepNumber": 2,
+        "instructions": "• In a large frying pan, heat a drizzle of olive oil over medium-high heat. Cook carrot and onion until tender, 3-4 mins. • Add pulled pork, Mexican seasoning, tomato paste and garlic, stirring, until fragrant, 1-2 mins. • Stir in the water, butter and stock powder and simmer, until slightly reduced, 1-2 mins. Season to taste. (Add more water if the pork looks dry!)"
+      },
+      {
+        "stepNumber": 3,
+        "instructions": "• Set air fryer to 200°C. Line base of air fryer basket with foil. Lay mini flour tortillas on a chopping board. Spoon pork mixture down the centre. • Roll tortillas up tightly and place, seam-side down, in air fryer basket. Spray or brush with olive oil. • Cook taquitos (in batches) until golden, 6-8 mins. NO AIR FRYER? Preheat grill to high. Place taquitos seam-side down in a medium baking dish, ensuring they fit snugly. Brush or spray with olive oil and grill until warmed through and golden, 5-8 mins."
+      },
+      {
+        "stepNumber": 4,
+        "instructions": "• In a small bowl, combine cucumber, spring onion and a drizzle of white wine vinegar and olive oil. Season. • Divide Mexican pulled pork taquitos between plates. Drizzle over mayonnaise. Top with cucumber salsa."
+      }
+    ],
+    "nutrition": [
+      {
+        "type": "57b42a48b7e8697d4b305304",
+        "name": "Calories",
+        "amount": 626,
+        "unit": "kcal"
+      },
+      {
+        "type": "57b42a48b7e8697d4b30530d",
+        "name": "Energy (kJ)",
+        "amount": 2620,
+        "unit": "kJ"
+      },
+      {
+        "type": "57b42a48b7e8697d4b305307",
+        "name": "Fat",
+        "amount": 20.2,
+        "unit": "g"
+      },
+      {
+        "type": "57b42a48b7e8697d4b305308",
+        "name": "of which saturates",
+        "amount": 8.1,
+        "unit": "g"
+      },
+      {
+        "type": "57b42a48b7e8697d4b305305",
+        "name": "Carbohydrate",
+        "amount": 51,
+        "unit": "g"
+      },
+      {
+        "type": "57b42a48b7e8697d4b305306",
+        "name": "of which sugars",
+        "amount": 17,
+        "unit": "g"
+      },
+      {
+        "type": "57b42a48b7e8697d4b30530a",
+        "name": "Dietary Fibre",
+        "amount": 11.5,
+        "unit": "g"
+      },
+      {
+        "type": "57b42a48b7e8697d4b305309",
+        "name": "Protein",
+        "amount": 59.4,
+        "unit": "g"
+      },
+      {
+        "type": "57b42a48b7e8697d4b30530c",
+        "name": "Cholesterol",
+        "amount": 0,
+        "unit": "mg"
+      },
+      {
+        "type": "57b42a48b7e8697d4b30530b",
+        "name": "Sodium",
+        "amount": 974,
+        "unit": "mg"
+      }
+    ],
+    "allergens": [
+      {
+        "externalId": "60368d89cdbdf450236ad8cd",
+        "type": "wheat",
+        "name": "Wheat",
+        "slug": "wheat",
+        "iconUrl": null,
+        "colorHandle": null,
+        "displayLabel": null,
+        "tracesOf": false,
+        "triggersTracesOf": false
+      },
+      {
+        "externalId": "57962a07b7e8697d4b3052f5",
+        "type": "gluten",
+        "name": "Gluten",
+        "slug": "gluten",
+        "iconUrl": "https://d3hvwccx09j84u.cloudfront.net/0,0/allergens/57962a07b7e8697d4b3052f5-e20d9ca4.png",
+        "colorHandle": null,
+        "displayLabel": null,
+        "tracesOf": false,
+        "triggersTracesOf": false
+      },
+      {
+        "externalId": "57962a07b7e8697d4b3052f9",
+        "type": "soya",
+        "name": "Soy",
+        "slug": "soy",
+        "iconUrl": "https://d3hvwccx09j84u.cloudfront.net/0,0/allergens/57962a07b7e8697d4b3052f9-feb8e168.png",
+        "colorHandle": null,
+        "displayLabel": null,
+        "tracesOf": false,
+        "triggersTracesOf": false
+      },
+      {
+        "externalId": "5acf97b7ae08b54d88061162",
+        "type": "traces-of-milk",
+        "name": "Milk",
+        "slug": "traces-of-milk",
+        "iconUrl": null,
+        "colorHandle": null,
+        "displayLabel": null,
+        "tracesOf": true,
+        "triggersTracesOf": false
+      },
+      {
+        "externalId": "57962a07b7e8697d4b3052f3",
+        "type": "maycontaintracesofallergens",
+        "name": "May contain traces of allergens",
+        "slug": "may-contain-traces-of-allergens",
+        "iconUrl": null,
+        "colorHandle": null,
+        "displayLabel": null,
+        "tracesOf": true,
+        "triggersTracesOf": true
+      },
+      {
+        "externalId": "62cc417a2f15d58ec3559423",
+        "type": "traces-of-gluten",
+        "name": "Gluten",
+        "slug": "traces-of-gluten",
+        "iconUrl": null,
+        "colorHandle": null,
+        "displayLabel": null,
+        "tracesOf": true,
+        "triggersTracesOf": false
+      },
+      {
+        "externalId": "5b0532aaae08b52eb9420552",
+        "type": "traces-of-soya",
+        "name": "Soy",
+        "slug": "traces-of-soy",
+        "iconUrl": null,
+        "colorHandle": null,
+        "displayLabel": null,
+        "tracesOf": true,
+        "triggersTracesOf": false
+      },
+      {
+        "externalId": "6203885f2cefe43adc5127c0",
+        "type": "traces-of-wheat",
+        "name": "Wheat",
+        "slug": "traces-of-wheat",
+        "iconUrl": null,
+        "colorHandle": null,
+        "displayLabel": null,
+        "tracesOf": true,
+        "triggersTracesOf": false
+      }
+    ],
+    "cuisines": [
+      {
+        "externalId": "57ebbc17b7e8697d4b3053af",
+        "type": "mexican",
+        "name": "Mexican",
+        "slug": "mexican",
+        "iconUrl": "https://d3hvwccx09j84u.cloudfront.net/0,0/cuisines/57ebbc17b7e8697d4b3053af-0317d647.jpg",
+        "colorHandle": null,
+        "displayLabel": null,
+        "tracesOf": null,
+        "triggersTracesOf": null
+      }
+    ],
+    "tags": [
+      {
+        "externalId": "5e335d456ce5fd2a39106bb9",
+        "type": "easy",
+        "name": "Easy",
+        "slug": "easy",
+        "iconUrl": null,
+        "colorHandle": null,
+        "displayLabel": false,
+        "tracesOf": null,
+        "triggersTracesOf": null
+      },
+      {
+        "externalId": "633aebd1544a63f8e90786b6",
+        "type": "air-fryer",
+        "name": "Air Fryer Easy",
+        "slug": "air-fryer-easy",
+        "iconUrl": null,
+        "colorHandle": "text",
+        "displayLabel": false,
+        "tracesOf": null,
+        "triggersTracesOf": null
+      }
+    ]
+  }
+]

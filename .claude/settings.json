@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(xargs ls -la)",
+      "Bash(sort -k5 -rn)",
+      "Bash(python3 -c ' *)",
+      "Bash(ls /Users/oliver/Documents/github/)",
+      "Read(//Users/oliver/Documents/github/**)"
+    ]
+  }
+}

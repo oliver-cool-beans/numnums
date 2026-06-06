@@ -1,0 +1,170 @@
+[
+  {
+    "ingredient_handle": "sour-cream",
+    "source_quantity": 1,
+    "source_unit": "unit",
+    "quantity": 2,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "stock-concentrate",
+    "source_quantity": 1,
+    "source_unit": "unit",
+    "quantity": 5,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "vinegar",
+    "source_quantity": 1,
+    "source_unit": "bottle",
+    "quantity": 25,
+    "unit": "ml"
+  },
+  {
+    "ingredient_handle": "dried-herbs",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1,
+    "unit": "tsp"
+  },
+  {
+    "ingredient_handle": "spice-blend",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "curry-powder",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "dried-rosemary",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 0.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "jasmine-rice",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 1,
+    "unit": "cup"
+  },
+  {
+    "ingredient_handle": "basmati-rice",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 1,
+    "unit": "cup"
+  },
+  {
+    "ingredient_handle": "microwavable-rice",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 250,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "tomato-paste",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 70,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "sun-dried-tomato-paste",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 70,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "passata",
+    "source_quantity": 1,
+    "source_unit": "carton",
+    "quantity": 200,
+    "unit": "ml"
+  },
+  {
+    "ingredient_handle": "passata",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 200,
+    "unit": "ml"
+  },
+  {
+    "ingredient_handle": "cheddar-cheese",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 100,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "haloumi",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 180,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "mayonnaise",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "aioli",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "garlic-aioli",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "mixed-salad-leaves",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 60,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "baby-spinach-leaves",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 60,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "sweetcorn",
+    "source_quantity": 1,
+    "source_unit": "tin",
+    "quantity": 125,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "diced-tomatoes",
+    "source_quantity": 1,
+    "source_unit": "tin",
+    "quantity": 400,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "olive-oil",
+    "source_quantity": 1,
+    "source_unit": "drizzle",
+    "quantity": 1,
+    "unit": "tbs"
+  }
+]
