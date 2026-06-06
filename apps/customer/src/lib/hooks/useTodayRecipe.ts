@@ -98,7 +98,7 @@ export function useTodayRecipe(userId: string | undefined, recipeId: string | un
           description: recipeData.description,
           steps: stepsData || [],
           ingredients: (ingredientLinks ?? []).flatMap((link) => {
-            const ing = link.ingredients as { handle: string; image_url: string | null } | null;
+            const ing = link.ingredients as unknown as { handle: string; image_url: string | null } | null;
             if (!ing) return [];
             return [{ handle: ing.handle, quantity: link.quantity, unit: link.unit, image_url: ing.image_url }];
           }),

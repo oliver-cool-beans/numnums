@@ -25,20 +25,20 @@ function WavyRow({ waveOffset = 0 }: WavyRowProps) {
 const ROWS = Array.from({ length: 30 }, (_, i) => ({
   waveOffset: i * 5,
   stagger: i % 2 === 1,
+  animationName: i % 2 === 0 ? "bgRowLeft" : "bgRowRight",
+  animationDelay: `${-(i * 1.4).toFixed(1)}s`,
 }))
 
-export function NumnumsBackground() {
+type NumnumsBackgroundProps = {
+  animated?: boolean
+}
+
+export function NumnumsBackground({ animated = false }: NumnumsBackgroundProps) {
   return (
     <div
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 select-none overflow-hidden"
     >
-      {/*
-        Start above the visible area so the -3° tilt doesn't leave an empty
-        triangle at the top-left. 30 rows × ~100px each = ~3 000px total,
-        covering any screen height. Single rotation on the whole block keeps
-        every row perfectly parallel — no inter-row overlap.
-      */}
       <div
         style={{
           position: "absolute",
@@ -49,10 +49,16 @@ export function NumnumsBackground() {
         }}
       >
         <div className="flex flex-col gap-7 md:gap-11">
-          {ROWS.map(({ waveOffset, stagger }) => (
+          {ROWS.map(({ waveOffset, stagger, animationName, animationDelay }) => (
             <div
               key={waveOffset}
-              style={{ transform: stagger ? "translateX(-52px)" : undefined }}
+              style={{
+                transform: stagger ? "translateX(-52px)" : undefined,
+                animation: animated
+                  ? `${animationName} 22s ease-in-out infinite alternate`
+                  : undefined,
+                animationDelay: animated ? animationDelay : undefined,
+              }}
             >
               <WavyRow waveOffset={waveOffset} />
             </div>

@@ -6,7 +6,15 @@
       "Bash(sort -k5 -rn)",
       "Bash(python3 -c ' *)",
       "Bash(ls /Users/oliver/Documents/github/)",
-      "Read(//Users/oliver/Documents/github/**)"
+      "Read(//Users/oliver/Documents/github/**)",
+      "Bash(npx next *)",
+      "Bash(pnpm build *)",
+      "Bash(pnpm --filter @numnums/admin build)",
+      "Bash(pnpm --filter @numnums/customer build)",
+      "Bash(sips -z 192 192 apps/customer/public/app-logo.png --out apps/customer/public/icons/icon-192.png)",
+      "Bash(sips -z 512 512 apps/customer/public/app-logo.png --out apps/customer/public/icons/icon-512.png)",
+      "Bash(sips -z 180 180 apps/customer/public/app-logo.png --out apps/customer/public/icons/apple-touch-icon.png)",
+      "Bash(pnpm add *)"
     ]
   }
 }

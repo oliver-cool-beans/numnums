@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 
@@ -8,7 +8,7 @@ type CallbackState =
   | { status: "working"; message: string }
   | { status: "error"; message: string };
 
-export default function AuthCompletePage() {
+function AuthCompleteInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [state, setState] = useState<CallbackState>({
@@ -176,5 +176,13 @@ export default function AuthCompletePage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function AuthCompletePage() {
+  return (
+    <Suspense>
+      <AuthCompleteInner />
+    </Suspense>
   );
 }

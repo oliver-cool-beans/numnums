@@ -311,3 +311,13 @@
     animation: none;
   }
 }
+
+@keyframes bgRowLeft {
+  from { transform: translateX(0px); }
+  to   { transform: translateX(-110px); }
+}
+
+@keyframes bgRowRight {
+  from { transform: translateX(0px); }
+  to   { transform: translateX(110px); }
+}

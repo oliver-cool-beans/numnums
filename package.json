@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "pnpm --filter @numnums/admin dev",
     "dev:customer": "pnpm --filter @numnums/customer dev",
-    "build": "pnpm --filter @numnums/admin build",
+    "build:admin": "pnpm --filter @numnums/admin build",
     "build:customer": "pnpm --filter @numnums/customer build",
     "fetch:everyplate": "pnpm --filter @numnums/admin fetch:everyplate",
     "import:aldi": "pnpm --filter @numnums/admin import:aldi",

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays } from "lucide-react";
 import {
@@ -30,6 +30,7 @@ import { useAuth } from "@/lib/auth-context";
 type PlanningTarget = { week: number; year: number } | null;
 
 // ─── Plan Ahead card ─────────────────────────────────────────────────────────
+
 
 function PlanAheadCard({
   onOpenModal,
@@ -87,7 +88,7 @@ function FullScreenOverlay({ children }: { children: React.ReactNode }) {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function DashboardPage() {
+function DashboardInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"week" | "list" | "favorites" | "profile">("week");
@@ -269,9 +270,10 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Desktop layout (hidden on mobile) ── */}
-      <div className="relative hidden md:block md:flex-1 md:overflow-y-auto md:bg-[#F7F3EF]">
-        <NumnumsBackground />
-        <div className="relative z-10 mx-auto w-full max-w-[680px] px-8 pt-6 pb-10">
+      <div className="hidden md:block md:flex-1 md:overflow-y-auto md:bg-[#F7F3EF]">
+        <div className="relative">
+          <NumnumsBackground />
+          <div className="relative z-10 mx-auto w-full max-w-[680px] px-8 pt-6 pb-10">
 
           <div className="mb-1 flex items-center justify-between">
             <div>
@@ -337,7 +339,16 @@ export default function DashboardPage() {
             />
           </div>
         </div>
+        </div>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense>
+      <DashboardInner />
+    </Suspense>
   );
 }

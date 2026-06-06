@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { SiMeta } from "react-icons/si";
 import { SocialLoginButton } from "@/components/auth/social-login-button";
+import { NumnumsBackground } from "@/components/ui/NumnumsBackground";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase-client";
 
@@ -154,13 +155,14 @@ export default function Home() {
   const restOfHeadline = headline.slice(firstWord.length).trimStart();
 
   return (
-    <main className="min-h-dvh w-full bg-white">
-      <section className="relative flex min-h-dvh flex-col overflow-hidden px-4 pb-4 pt-3 text-[#3A2A1F] md:flex-row md:items-center md:justify-center md:gap-16 md:overflow-visible md:px-8 md:pb-12 md:pt-10 lg:gap-24">
+    <main className="relative min-h-dvh w-full bg-white">
+      <NumnumsBackground animated />
+      <section className="relative z-10 flex min-h-dvh flex-col overflow-hidden px-4 pb-4 pt-3 text-[#3A2A1F] md:flex-row md:items-center md:justify-center md:gap-16 md:overflow-visible md:px-8 md:pb-12 md:pt-10 lg:gap-24">
 
         {/* Left column: branding + content + CTA */}
         <div className="flex flex-1 flex-col md:flex-none md:w-[440px] md:justify-center md:py-8">
           <header className="w-full">
-            <p className="text-left text-[28px] font-semibold leading-none tracking-[-0.02em]">numnums</p>
+            <p className="text-left text-[52px] font-semibold leading-none tracking-[-0.03em] md:text-[64px]">numnums</p>
           </header>
 
           {/* Middle content — flex-1 on mobile (pushes CTA to bottom), natural on md+ */}

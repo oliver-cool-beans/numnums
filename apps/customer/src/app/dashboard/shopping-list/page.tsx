@@ -196,10 +196,12 @@ function PageShell({
   return (
     <div className="min-h-dvh w-full bg-white md:flex md:h-dvh md:overflow-hidden md:bg-[#FAF6F2]">
       <SideNav activeTab="list" onTabChange={handleNavChange} />
-      <div className="relative flex flex-1 flex-col md:overflow-y-auto">
-        <NumnumsBackground />
-        <div className="relative z-10 flex flex-1 flex-col md:items-center md:justify-start md:p-6 lg:p-8">
-          {children}
+      <div className="flex flex-1 flex-col md:overflow-y-auto">
+        <div className="relative flex flex-1 flex-col">
+          <NumnumsBackground />
+          <div className="relative z-10 flex flex-1 flex-col md:items-center md:justify-start md:p-6 lg:p-8">
+            {children}
+          </div>
         </div>
       </div>
     </div>
