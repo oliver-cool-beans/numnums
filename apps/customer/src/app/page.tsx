@@ -154,28 +154,59 @@ export default function Home() {
   const firstWord = headline.split(" ")[0] ?? "";
   const restOfHeadline = headline.slice(firstWord.length).trimStart();
 
+  const handleLogin = async () => {
+    const redirectUrl = new URL("/auth/complete", globalThis.window.location.origin);
+    redirectUrl.searchParams.set("next", "/dashboard");
+
+    console.info("[customer-home] Starting OAuth sign-in", {
+      provider: "facebook",
+      redirectTo: redirectUrl.toString(),
+    });
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "facebook",
+      options: { redirectTo: redirectUrl.toString() },
+    });
+
+    if (error) {
+      console.error("[customer-home] OAuth sign-in failed to start", error);
+      return;
+    }
+
+    console.info("[customer-home] OAuth sign-in started", {
+      provider: "facebook",
+      authUrl: data.url ?? null,
+    });
+  };
+
   return (
     <main className="relative min-h-dvh w-full bg-white">
       <NumnumsBackground animated />
-      <section className="relative z-10 flex min-h-dvh flex-col overflow-hidden px-4 pb-4 pt-3 text-[#3A2A1F] md:flex-row md:items-center md:justify-center md:gap-16 md:overflow-visible md:px-8 md:pb-12 md:pt-10 lg:gap-24">
+      {/*
+        Breakpoints:
+          < md  (< 768px)  — mobile: single col, fixed bottom button
+          md–lg (768–1023) — tablet: single col centered, fixed bottom button
+          lg+   (1024px+)  — desktop: two-col side by side, in-flow button
+      */}
+      <section className="relative z-10 flex min-h-dvh flex-col px-4 pb-[calc(5rem+max(1rem,env(safe-area-inset-bottom)))] pt-3 text-[#3A2A1F] md:px-10 md:pt-8 lg:flex-row lg:items-center lg:justify-center lg:gap-16 lg:overflow-visible lg:px-12 lg:pb-12 lg:pt-10 xl:gap-24">
 
-        {/* Left column: branding + content + CTA */}
-        <div className="flex flex-1 flex-col md:flex-none md:w-[440px] md:justify-center md:py-8">
+        {/* Content column */}
+        <div className="flex flex-1 flex-col md:mx-auto md:w-full md:max-w-[580px] lg:mx-0 lg:flex-none lg:w-[440px] lg:justify-center lg:py-8">
           <header className="w-full">
             <p className="text-left text-[52px] font-semibold leading-none tracking-[-0.03em] md:text-[64px]">numnums</p>
           </header>
 
-          {/* Middle content — flex-1 on mobile (pushes CTA to bottom), natural on md+ */}
-          <div className="mt-5 flex flex-1 flex-col items-center md:mt-10 md:flex-none md:items-start">
+          {/* Middle content */}
+          <div className="mt-5 flex flex-1 flex-col items-center md:mt-8 lg:mt-10 lg:flex-none lg:items-start">
 
-            {/* Pot image — mobile only, shown between header and headline */}
-            <div className="relative h-[320px] w-[320px] splash-pot md:hidden">
-              <Image src="/pot.png" alt="Numnums cooking pot mascot" fill priority sizes="320px" className="object-contain" />
+            {/* Pot image — mobile + tablet (hidden on desktop where it moves to the right column) */}
+            <div className="relative h-[min(240px,30svh)] w-[min(240px,30svh)] splash-pot md:h-[300px] md:w-[300px] lg:hidden">
+              <Image src="/pot.png" alt="Numnums cooking pot mascot" fill priority sizes="(max-width: 1024px) 300px, 240px" className="object-contain" />
               <span className="splash-veg-1 absolute left-4 top-[72px] h-7 w-7 rounded-full bg-[#58A6D6]" />
               <span className="splash-veg-2 absolute right-5 top-[92px] h-6 w-6 rounded-full bg-[#E58A45]" />
             </div>
 
-            <p className="splash-headline mt-0 mb-0 min-h-[2.2em] max-w-[360px] pb-0 text-center text-[62px] font-[600] leading-[0.9] tracking-[-0.04em] md:min-h-0 md:max-w-[520px] md:text-left md:text-[76px] lg:text-[88px]">
+            <p className="splash-headline mt-0 mb-0 min-h-[2.2em] max-w-[360px] pb-0 text-center text-[62px] font-[600] leading-[0.9] tracking-[-0.04em] md:min-h-0 md:max-w-[540px] md:text-[76px] lg:text-left xl:text-[88px]">
               <span
                 className={`inline-block px-1 py-0.5 rounded-sm transition-all duration-300 ${
                   isHighlighting ? "typewriter-text-highlight" : ""
@@ -189,11 +220,11 @@ export default function Home() {
               </span>
             </p>
 
-            <p className="mt-3 max-w-[340px] text-center text-[30px] font-medium leading-[1.15] tracking-[-0.01em] text-[#6F5B4B] md:text-left md:max-w-[400px] md:text-[26px] lg:text-[30px]">
+            <p className="mt-3 max-w-[340px] text-center text-[30px] font-medium leading-[1.15] tracking-[-0.01em] text-[#6F5B4B] md:max-w-[460px] md:text-[28px] lg:text-left lg:max-w-[400px] lg:text-[26px] xl:text-[30px]">
               tell us what you like and we&apos;ll sort your dinners.
             </p>
 
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[14px] font-semibold tracking-[0.01em] text-[#5A4535] md:justify-start">
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[14px] font-semibold tracking-[0.01em] text-[#5A4535] lg:justify-start">
               <span className="rounded-full border border-[#DCC7A5] bg-[#FFF1D7] px-3 py-1.5 shadow-[0_1px_0_rgba(58,42,31,0.08)]">
                 simple setup
               </span>
@@ -206,49 +237,25 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mt-6 md:mt-10 md:max-w-[340px]">
+          {/* Desktop-only in-flow button */}
+          <div className="hidden lg:mt-10 lg:block lg:max-w-[340px]">
             <SocialLoginButton
               label="login to meta"
               logo={<SiMeta className="h-6 w-6" aria-hidden="true" />}
-              onClick={async () => {
-                const redirectUrl = new URL("/auth/complete", globalThis.window.location.origin);
-                redirectUrl.searchParams.set("next", "/dashboard");
-
-                console.info("[customer-home] Starting OAuth sign-in", {
-                  provider: "facebook",
-                  redirectTo: redirectUrl.toString(),
-                });
-
-                const { data, error } = await supabase.auth.signInWithOAuth({
-                  provider: "facebook",
-                  options: {
-                    redirectTo: redirectUrl.toString(),
-                  },
-                });
-
-                if (error) {
-                  console.error("[customer-home] OAuth sign-in failed to start", error);
-                  return;
-                }
-
-                console.info("[customer-home] OAuth sign-in started", {
-                  provider: "facebook",
-                  authUrl: data.url ?? null,
-                });
-              }}
+              onClick={handleLogin}
             />
           </div>
         </div>
 
-        {/* Right column: pot image — tablet/desktop only */}
-        <div className="hidden md:flex md:w-[400px] md:shrink-0 md:items-center md:justify-start lg:w-[460px]">
-          <div className="relative h-[380px] w-[380px] splash-pot lg:h-[460px] lg:w-[460px]">
+        {/* Right column: pot image — desktop only */}
+        <div className="hidden lg:flex lg:w-[400px] lg:shrink-0 lg:items-center lg:justify-start xl:w-[460px]">
+          <div className="relative h-[400px] w-[400px] splash-pot xl:h-[460px] xl:w-[460px]">
             <Image
               src="/pot.png"
               alt="Numnums cooking pot mascot"
               fill
               priority
-              sizes="(max-width: 1024px) 380px, 480px"
+              sizes="(max-width: 1280px) 400px, 480px"
               className="object-contain"
             />
             <span className="splash-veg-1 absolute left-4 top-[72px] h-7 w-7 rounded-full bg-[#58A6D6]" />
@@ -257,6 +264,15 @@ export default function Home() {
         </div>
 
       </section>
+
+      {/* Fixed CTA for mobile + tablet — lives outside the section to avoid iOS overflow/fixed bug */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 bg-gradient-to-t from-white via-white/90 to-transparent lg:hidden">
+        <SocialLoginButton
+          label="login to meta"
+          logo={<SiMeta className="h-6 w-6" aria-hidden="true" />}
+          onClick={handleLogin}
+        />
+      </div>
     </main>
   );
 }

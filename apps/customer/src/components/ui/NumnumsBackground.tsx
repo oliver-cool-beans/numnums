@@ -2,18 +2,19 @@ type WavyRowProps = {
   waveOffset?: number
 }
 
+const WAVY_CHARS = Array.from("numnumnum  ".repeat(6), (char, i) => ({ id: i, char }))
+
 function WavyRow({ waveOffset = 0 }: WavyRowProps) {
-  const full = "numnumnum  ".repeat(6)
   return (
     <div
       className="flex shrink-0 select-none whitespace-nowrap font-bold text-[#EADFCE]/25 text-[72px] md:text-[110px]"
       style={{ fontFamily: "var(--font-display)", letterSpacing: "0.2em" }}
     >
-      {full.split("").map((char, index) => (
+      {WAVY_CHARS.map(({ id, char }) => (
         <span
-          key={index}
+          key={id}
           className="inline-block"
-          style={{ transform: `translateY(${Math.sin((index + waveOffset) * 0.65) * 8}px)` }}
+          style={{ transform: `translateY(${(Math.sin((id + waveOffset) * 0.65) * 8).toFixed(4)}px)` }}
         >
           {char}
         </span>
