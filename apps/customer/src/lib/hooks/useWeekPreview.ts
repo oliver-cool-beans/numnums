@@ -63,7 +63,7 @@ export function useWeekPreview(userId: string | undefined) {
 
         const recipeMap = new Map(recipes?.map((r) => [r.id, r]) || []);
 
-          const days = [
+          const days: WeekPreviewDay[] = [
           {
             day: "monday",
             dayLabel: "MON",
