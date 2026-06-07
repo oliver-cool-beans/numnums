@@ -2,6 +2,7 @@
 
 import { ShoppingList } from "@/lib/hooks";
 import { Check, ShoppingCart } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ShoppingListCardProps = {
   list: ShoppingList | null;
@@ -24,6 +25,20 @@ export function ShoppingListCard({
   const isDraft = list?.status === "draft";
   const isConfirmed = list?.status === "confirmed";
   const isCompleted = list?.status === "completed";
+
+  if (isLoading && !list) {
+    return (
+      <div className={wrapperClass}>
+        <div className="flex items-center gap-4 rounded-[24px] bg-[#FFF7E8] px-5 py-5">
+          <Skeleton className="h-12 w-12 shrink-0 rounded-full bg-[#F0E8DE]" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-40 bg-[#F0E8DE]" />
+            <Skeleton className="h-3 w-28 bg-[#F0E8DE]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!list || isDraft) {
     return (
@@ -53,7 +68,12 @@ export function ShoppingListCard({
   if (isConfirmed || isCompleted) {
     return (
       <div className={wrapperClass}>
-        <div className="flex items-center justify-between rounded-[20px] bg-[#FFE7A3] p-4">
+        <button
+          onClick={onViewList}
+          disabled={isLoading}
+          className="flex w-full items-center justify-between rounded-[20px] bg-[#FFE7A3] p-4 text-left transition-colors hover:bg-[#FFE093] disabled:opacity-50"
+          type="button"
+        >
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7CB342]">
               <Check aria-hidden="true" className="h-5 w-5 text-white" />
@@ -69,15 +89,10 @@ export function ShoppingListCard({
               </p>
             </div>
           </div>
-          <button
-            onClick={onViewList}
-            disabled={isLoading}
-            className="flex-shrink-0 text-sm font-semibold text-[#3A2A1F] hover:text-[#1F1410] transition-colors"
-            type="button"
-          >
+          <span className="flex-shrink-0 text-sm font-semibold text-[#3A2A1F]">
             View
-          </button>
-        </div>
+          </span>
+        </button>
       </div>
     );
   }

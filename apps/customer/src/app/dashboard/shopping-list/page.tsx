@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/auth-context";
 import { useShoppingListFull, type EnrichedItem } from "@/lib/hooks/useShoppingListFull";
 import { SideNav } from "@/components/dashboard";
 import { NumnumsBackground } from "@/components/ui/NumnumsBackground";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn, getCurrentWeek, getWeekAtOffset, getWeekLabel } from "@/lib/utils";
 
 // ─── Category helpers ────────────────────────────────────────────────────────
@@ -127,6 +129,24 @@ function CategorySection({
   );
 }
 
+function CategorySkeleton({ rows }: { rows: number }) {
+  return (
+    <section>
+      <div className="bg-[#FFF7E8] px-5 py-2">
+        <Skeleton className="h-3 w-24 bg-[#F0E8DE]" />
+      </div>
+      <div className="divide-y divide-[#F0E8DE]">
+        {Array.from({ length: rows }, (_, i) => `row-${i}`).map((key) => (
+          <div key={key} className="flex items-center gap-4 px-5 py-4">
+            <Skeleton className="h-7 w-7 shrink-0 rounded-full bg-[#F0E8DE]" />
+            <Skeleton className="h-4 flex-1 max-w-[60%] bg-[#F0E8DE]" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ─── Week navigation bar ─────────────────────────────────────────────────────
 
 function WeekNav({
@@ -226,7 +246,7 @@ function ShoppingListInner() {
   const weekFilter =
     !isCurrentWeek ? { weekNumber: activeWeek, weekYear: activeYear } : undefined;
 
-  const { list, loading, error, toggleItem, completeList, quickComplete } = useShoppingListFull(
+  const { list, loading, error, toggleItem, completeList, uncompleteList, quickComplete } = useShoppingListFull(
     user?.id,
     weekFilter,
   );
@@ -258,16 +278,51 @@ function ShoppingListInner() {
 
   const goToCurrent = () => router.push("/dashboard/shopping-list");
 
-  if (authLoading || loading) {
+  // We can't know whether to render this page or redirect to "/" until the
+  // session resolves, so this is the rare full-page block — same screen as login.
+  if (authLoading) {
+    return <LoadingScreen title="Loading" message="Getting your account ready..." />;
+  }
+
+  // The list itself mirrors the loaded layout (header, week nav, progress bar,
+  // categorized item rows) so the real content can drop straight into place.
+  if (loading) {
     return (
       <PageShell router={router}>
-        <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-[400px] md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
-          <header className="flex items-center gap-3 px-5 pb-4 pt-14">
-            <div className="h-10 w-10 rounded-full bg-[#F0E8DE]" />
-            <div className="h-6 w-32 rounded-lg bg-[#F0E8DE]" />
+        <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-0 md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
+          <header className="flex items-center gap-3 px-5 pb-3 pt-14">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl font-semibold text-[#3A2A1F]">Shopping list</h1>
+            </div>
+            <Skeleton className="h-4 w-12 bg-[#F0E8DE]" />
           </header>
-          <div className="flex flex-1 items-center justify-center">
-            <p className="text-sm text-[#9E8B7E]">Loading your list...</p>
+
+          <div className="flex items-center justify-between px-5 pb-2 pt-1">
+            <Skeleton className="h-8 w-8 shrink-0 rounded-full bg-[#F0E8DE]" />
+            <Skeleton className="mx-2 h-7 flex-1 rounded-full bg-[#F0E8DE]" />
+            <Skeleton className="h-8 w-8 shrink-0 rounded-full bg-[#F0E8DE]" />
+          </div>
+
+          <Skeleton className="mx-5 mb-1 h-1.5 rounded-full bg-[#F0E8DE]" />
+
+          <div className="flex justify-end px-5 pb-2 pt-2">
+            <Skeleton className="h-4 w-24 bg-[#F0E8DE]" />
+          </div>
+
+          <div className="flex-1 overflow-hidden pb-28 md:pb-0">
+            <div className="divide-y divide-[#F0E8DE]">
+              <CategorySkeleton rows={3} />
+              <CategorySkeleton rows={2} />
+              <CategorySkeleton rows={4} />
+            </div>
           </div>
         </main>
       </PageShell>
@@ -366,6 +421,13 @@ function ShoppingListInner() {
               className="mt-2 w-full rounded-[20px] bg-[#7CB342] py-4 text-base font-semibold text-white transition-all active:scale-[0.98]"
             >
               Back to dashboard
+            </button>
+            <button
+              type="button"
+              onClick={() => uncompleteList(list.id)}
+              className="text-sm text-[#9E8B7E] underline underline-offset-2 transition-colors active:text-[#3A2A1F]"
+            >
+              Marked this by accident? Undo
             </button>
           </div>
         </main>

@@ -193,20 +193,20 @@ export default function Home() {
         {/* Content column */}
         <div className="flex flex-1 flex-col md:mx-auto md:w-full md:max-w-[580px] lg:mx-0 lg:flex-none lg:w-[440px] lg:justify-center lg:py-8">
           <header className="w-full">
-            <p className="text-left text-[52px] font-semibold leading-none tracking-[-0.03em] md:text-[64px]">numnums</p>
+            <p className="text-left text-[min(52px,8svh)] font-semibold leading-none tracking-[-0.03em] md:text-[64px]">numnums</p>
           </header>
 
           {/* Middle content */}
-          <div className="mt-5 flex flex-1 flex-col items-center md:mt-8 lg:mt-10 lg:flex-none lg:items-start">
+          <div className="mt-[min(16px,2svh)] flex flex-1 flex-col items-center md:mt-8 lg:mt-10 lg:flex-none lg:items-start">
 
             {/* Pot image — mobile + tablet (hidden on desktop where it moves to the right column) */}
-            <div className="relative h-[min(240px,30svh)] w-[min(240px,30svh)] splash-pot md:h-[300px] md:w-[300px] lg:hidden">
-              <Image src="/pot.png" alt="Numnums cooking pot mascot" fill priority sizes="(max-width: 1024px) 300px, 240px" className="object-contain" />
+            <div className="relative h-[min(200px,21svh)] w-[min(200px,21svh)] splash-pot md:h-[300px] md:w-[300px] lg:hidden">
+              <Image src="/pot.png" alt="Numnums cooking pot mascot" fill priority sizes="(max-width: 1024px) 300px, 200px" className="object-contain" />
               <span className="splash-veg-1 absolute left-4 top-[72px] h-7 w-7 rounded-full bg-[#58A6D6]" />
               <span className="splash-veg-2 absolute right-5 top-[92px] h-6 w-6 rounded-full bg-[#E58A45]" />
             </div>
 
-            <p className="splash-headline mt-0 mb-0 min-h-[2.2em] max-w-[360px] pb-0 text-center text-[62px] font-[600] leading-[0.9] tracking-[-0.04em] md:min-h-0 md:max-w-[540px] md:text-[76px] lg:text-left xl:text-[88px]">
+            <p className="splash-headline mt-0 mb-0 min-h-[2.2em] max-w-[360px] pb-0 text-center text-[min(62px,8svh)] font-[600] leading-[0.9] tracking-[-0.04em] md:min-h-0 md:max-w-[540px] md:text-[76px] lg:text-left xl:text-[88px]">
               <span
                 className={`inline-block px-1 py-0.5 rounded-sm transition-all duration-300 ${
                   isHighlighting ? "typewriter-text-highlight" : ""
@@ -220,18 +220,18 @@ export default function Home() {
               </span>
             </p>
 
-            <p className="mt-3 max-w-[340px] text-center text-[30px] font-medium leading-[1.15] tracking-[-0.01em] text-[#6F5B4B] md:max-w-[460px] md:text-[28px] lg:text-left lg:max-w-[400px] lg:text-[26px] xl:text-[30px]">
+            <p className="mt-[min(10px,1.5svh)] max-w-[340px] text-center text-[min(28px,4svh)] font-medium leading-[1.15] tracking-[-0.01em] text-[#6F5B4B] md:max-w-[460px] md:text-[28px] lg:text-left lg:max-w-[400px] lg:text-[26px] xl:text-[30px]">
               tell us what you like and we&apos;ll sort your dinners.
             </p>
 
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[14px] font-semibold tracking-[0.01em] text-[#5A4535] lg:justify-start">
-              <span className="rounded-full border border-[#DCC7A5] bg-[#FFF1D7] px-3 py-1.5 shadow-[0_1px_0_rgba(58,42,31,0.08)]">
+            <div className="mt-[min(14px,2svh)] flex flex-wrap items-center justify-center gap-2 text-[13px] font-semibold tracking-[0.01em] text-[#5A4535] md:text-[14px] lg:justify-start">
+              <span className="rounded-full border border-[#DCC7A5] bg-[#FFF1D7] px-2.5 py-1 shadow-[0_1px_0_rgba(58,42,31,0.08)] md:px-3 md:py-1.5">
                 simple setup
               </span>
-              <span className="rounded-full border border-[#DCC7A5] bg-[#FFF1D7] px-3 py-1.5 shadow-[0_1px_0_rgba(58,42,31,0.08)]">
+              <span className="rounded-full border border-[#DCC7A5] bg-[#FFF1D7] px-2.5 py-1 shadow-[0_1px_0_rgba(58,42,31,0.08)] md:px-3 md:py-1.5">
                 family-friendly
               </span>
-              <span className="rounded-full border border-[#DCC7A5] bg-[#FFF1D7] px-3 py-1.5 shadow-[0_1px_0_rgba(58,42,31,0.08)]">
+              <span className="rounded-full border border-[#DCC7A5] bg-[#FFF1D7] px-2.5 py-1 shadow-[0_1px_0_rgba(58,42,31,0.08)] md:px-3 md:py-1.5">
                 zero overwhelm
               </span>
             </div>

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 type CallbackState =
   | { status: "working"; message: string }
@@ -165,17 +166,10 @@ function AuthCompleteInner() {
   }, [router, searchParams]);
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col overflow-hidden bg-white px-4 pb-4 pt-3 text-[#3A2A1F] md:max-w-[480px]">
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-        <p className="text-[28px] font-semibold leading-none tracking-[-0.02em]">numnums</p>
-        <div className="space-y-2">
-          <h1 className="text-[32px] font-semibold leading-[1] tracking-[-0.03em]">
-            {state.status === "working" ? "Signing you in" : "Login failed"}
-          </h1>
-          <p className="max-w-[280px] text-[18px] leading-[1.2] text-[#6F5B4B]">{state.message}</p>
-        </div>
-      </div>
-    </main>
+    <LoadingScreen
+      title={state.status === "working" ? "Signing you in" : "Login failed"}
+      message={state.message}
+    />
   );
 }
 

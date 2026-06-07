@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Calendar, Check, ChevronRight, Loader2, Minus, Plus, Sparkles } from "lucide-react";
+import { ArrowLeft, Calendar, Check, ChevronRight, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase-client";
 import { cn, getWeekAtOffset, getWeekLabel } from "@/lib/utils";
@@ -33,8 +33,8 @@ type PlanWeeksModalProps = {
 export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalProps) {
   const [weeks, setWeeks] = useState<WeekEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [autoCount, setAutoCount] = useState(2);
-  const [generating, setGenerating] = useState(false);
+  const [generatingAll, setGeneratingAll] = useState(false);
+  const [generatingWeekKey, setGeneratingWeekKey] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,53 +77,69 @@ export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalPr
   const unplannedWeeks = weeks.filter((w) => !w.isPlanned);
   const canGenerate = unplannedWeeks.length > 0;
 
-  const handleAutoGenerate = async () => {
-    const targets = unplannedWeeks.slice(0, autoCount);
+  const generateWeeks = async (targets: WeekEntry[]) => {
+    const allRecipes = await fetchOnboardingRecipes();
+
+    // Get previous week's recipe IDs to avoid repeating them in the first generated week
+    const prevWeek = getWeekAtOffset(0);
+    const prevIds = new Set(
+      await fetchWeekRecipeIds(userId, prevWeek.week, prevWeek.year),
+    );
+
+    let excludeIds = prevIds;
+    let plannedCount = 0;
+
+    for (const target of targets) {
+      const pool = allRecipes.filter((r) => !excludeIds.has(r.id));
+      // Fall back to full pool if not enough recipes remain after excluding
+      const effectivePool = pool.length >= DEFAULT_DAYS.length ? pool : allRecipes;
+      const meals = buildSchedule([], effectivePool, DEFAULT_DAYS, []);
+      await persistWeekPlan(userId, meals, target.week, target.year);
+      excludeIds = new Set(meals.map((m) => m.recipe.id));
+      plannedCount++;
+    }
+
+    setWeeks((prev) =>
+      prev.map((w) => {
+        const wasTarget = targets.some((t) => t.week === w.week && t.year === w.year);
+        return wasTarget ? { ...w, isPlanned: true } : w;
+      }),
+    );
+
+    return plannedCount;
+  };
+
+  const handleAutoGenerateAll = async () => {
+    const targets = unplannedWeeks;
     if (targets.length === 0) return;
 
-    setGenerating(true);
+    setGeneratingAll(true);
     setError(null);
     setResult(null);
 
     try {
-      const allRecipes = await fetchOnboardingRecipes();
-
-      // Get previous week's recipe IDs to avoid repeating them in the first generated week
-      const prevWeek = getWeekAtOffset(0);
-      const prevIds = new Set(
-        await fetchWeekRecipeIds(userId, prevWeek.week, prevWeek.year),
-      );
-
-      let excludeIds = prevIds;
-      let plannedCount = 0;
-
-      for (const target of targets) {
-        const pool = allRecipes.filter((r) => !excludeIds.has(r.id));
-        // Fall back to full pool if not enough recipes remain after excluding
-        const effectivePool = pool.length >= DEFAULT_DAYS.length ? pool : allRecipes;
-        const meals = buildSchedule([], effectivePool, DEFAULT_DAYS, []);
-        await persistWeekPlan(userId, meals, target.week, target.year);
-        excludeIds = new Set(meals.map((m) => m.recipe.id));
-        plannedCount++;
-      }
-
+      const plannedCount = await generateWeeks(targets);
       setResult({ planned: plannedCount, skipped: targets.length - plannedCount });
-
-      // Refresh week statuses
-      setWeeks((prev) =>
-        prev.map((w) => {
-          const wasTarget = targets.some((t) => t.week === w.week && t.year === w.year);
-          return wasTarget ? { ...w, isPlanned: true } : w;
-        }),
-      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed. Please try again.");
     } finally {
-      setGenerating(false);
+      setGeneratingAll(false);
     }
   };
 
-  const maxAutoCount = Math.max(1, unplannedWeeks.length);
+  const handleAutoGenerateWeek = async (target: WeekEntry) => {
+    const key = `${target.year}-${target.week}`;
+    setGeneratingWeekKey(key);
+    setError(null);
+
+    try {
+      await generateWeeks([target]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Generation failed. Please try again.");
+    } finally {
+      setGeneratingWeekKey(null);
+    }
+  };
 
   return (
     <div className="flex min-h-dvh flex-col bg-white px-4 pb-8 pt-3 text-[#3A2A1F]">
@@ -150,10 +166,34 @@ export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalPr
 
       {/* Week list */}
       <section className="mt-6">
-        <div className="flex items-center gap-2 text-sm font-semibold text-[#3A2A1F]">
-          <Calendar className="size-4 text-[#7CB342]" />
-          Upcoming weeks
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[#3A2A1F]">
+            <Calendar className="size-4 text-[#7CB342]" />
+            Upcoming weeks
+          </div>
+          {!loading && canGenerate && (
+            <button
+              type="button"
+              onClick={() => void handleAutoGenerateAll()}
+              disabled={generatingAll || generatingWeekKey !== null}
+              aria-label="Auto-generate all upcoming weeks"
+              title="Auto-generate all upcoming weeks"
+              className="flex size-8 items-center justify-center rounded-full bg-[#7CB342] text-white transition-colors hover:bg-[#689F38] disabled:opacity-50"
+            >
+              {generatingAll ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
+            </button>
+          )}
         </div>
+
+        {error && (
+          <div className="mt-3 rounded-[16px] border border-[#E4B9A3] bg-[#FFF1EB] px-4 py-3 text-sm text-[#9A4B1E]">
+            {error}
+          </div>
+        )}
 
         {loading ? (
           <div className="mt-4 flex items-center justify-center py-8">
@@ -183,85 +223,36 @@ export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalPr
                   )}
                 </div>
                 {w.isPlanned ? null : (
-                  <button
-                    type="button"
-                    onClick={() => onPlanWeek(w.week, w.year)}
-                    className="inline-flex items-center gap-1 rounded-full bg-[#3A2A1F] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#5C4A3A]"
-                  >
-                    Plan
-                    <ChevronRight className="size-3" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleAutoGenerateWeek(w)}
+                      disabled={generatingAll || generatingWeekKey !== null}
+                      aria-label={`Auto-generate ${w.label}`}
+                      title={`Auto-generate ${w.label}`}
+                      className="flex size-7 items-center justify-center rounded-full border border-[#D9CCBB] bg-white text-[#7CB342] transition-colors hover:bg-[#F4FFE8] disabled:opacity-40"
+                    >
+                      {generatingWeekKey === `${w.year}-${w.week}` ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="size-3.5" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onPlanWeek(w.week, w.year)}
+                      className="inline-flex items-center gap-1 rounded-full bg-[#3A2A1F] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#5C4A3A]"
+                    >
+                      Plan
+                      <ChevronRight className="size-3" />
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
           </div>
         )}
       </section>
-
-      {/* Auto-generate section */}
-      {!loading && canGenerate && !result && (
-        <section className="mt-8">
-          <div className="flex items-center gap-2 text-sm font-semibold text-[#3A2A1F]">
-            <Sparkles className="size-4 text-[#7CB342]" />
-            Auto-generate
-          </div>
-          <p className="mt-1 text-sm leading-5 text-[#6F5B4B]">
-            We&apos;ll pick recipes automatically — no repeats from week to week. Same recipe
-            can come back every 2+ weeks.
-          </p>
-
-          <div className="mt-4 flex items-center justify-between rounded-[20px] border border-[#E8DCCB] bg-white px-5 py-4">
-            <div>
-              <p className="text-sm font-semibold text-[#3A2A1F]">Weeks to plan</p>
-              <p className="text-xs text-[#9E8B7E]">
-                {unplannedWeeks.slice(0, autoCount).map((w) => w.label).join(", ")}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setAutoCount((c) => Math.max(1, c - 1))}
-                disabled={autoCount <= 1}
-                className="flex size-8 items-center justify-center rounded-full border border-[#D9CCBB] bg-white text-[#3A2A1F] disabled:opacity-30"
-              >
-                <Minus className="size-4" />
-              </button>
-              <span className="w-4 text-center text-base font-semibold text-[#3A2A1F]">
-                {autoCount}
-              </span>
-              <button
-                type="button"
-                onClick={() => setAutoCount((c) => Math.min(maxAutoCount, c + 1))}
-                disabled={autoCount >= maxAutoCount}
-                className="flex size-8 items-center justify-center rounded-full border border-[#D9CCBB] bg-white text-[#3A2A1F] disabled:opacity-30"
-              >
-                <Plus className="size-4" />
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <div className="mt-3 rounded-[16px] border border-[#E4B9A3] bg-[#FFF1EB] px-4 py-3 text-sm text-[#9A4B1E]">
-              {error}
-            </div>
-          )}
-
-          <Button
-            className="mt-4 h-11 w-full rounded-full bg-[#7CB342] text-base font-semibold text-white hover:bg-[#689F38] disabled:bg-[#B7D58A]"
-            onClick={() => void handleAutoGenerate()}
-            disabled={generating}
-          >
-            {generating ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="size-4 animate-spin" />
-                Generating {autoCount} week{autoCount > 1 ? "s" : ""}…
-              </span>
-            ) : (
-              `Auto-generate ${autoCount} week${autoCount > 1 ? "s" : ""}`
-            )}
-          </Button>
-        </section>
-      )}
 
       {/* Success result */}
       {result && (

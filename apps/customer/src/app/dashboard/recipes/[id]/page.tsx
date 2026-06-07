@@ -15,6 +15,7 @@ import {
 import { useTodayRecipe } from "@/lib/hooks";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase-client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ── Instruction parser ────────────────────────────────────────────────────────
 
@@ -192,10 +193,34 @@ export default function RecipePage() {
     });
   };
 
+  // Mirror the overview section's layout so the real content can drop straight
+  // into place once it lands, instead of replacing an unrelated loading state.
   if (loading) {
     return (
-      <main className="mx-auto flex h-dvh w-full max-w-[390px] items-center justify-center bg-background md:max-w-[680px]">
-        <p className="text-[#6F5B4B]">Loading recipe...</p>
+      <main className="relative mx-auto w-full max-w-[390px] md:max-w-[680px]">
+        <section className="flex h-dvh flex-col bg-background px-5 pb-8 pt-16">
+          <button
+            onClick={() => router.back()}
+            className="absolute left-4 top-4 z-20 rounded-full bg-[#EADFCE] p-2.5 text-[#3A2A1F]"
+          >
+            <ArrowLeft size={18} />
+          </button>
+
+          <Skeleton className="aspect-[4/3] w-full rounded-[24px] bg-[#D9CCBB]/60" />
+
+          <div className="mt-5 flex flex-1 flex-col">
+            <Skeleton className="h-7 w-3/4 bg-[#EADFCE]" />
+            <Skeleton className="mt-2 h-4 w-1/2 bg-[#EADFCE]" />
+            <div className="mt-4 flex gap-2">
+              <Skeleton className="h-9 w-28 rounded-full bg-[#EADFCE]" />
+              <Skeleton className="h-9 w-24 rounded-full bg-[#EADFCE]" />
+            </div>
+            <div className="mt-4 space-y-2">
+              <Skeleton className="h-4 w-full bg-[#EADFCE]" />
+              <Skeleton className="h-4 w-5/6 bg-[#EADFCE]" />
+            </div>
+          </div>
+        </section>
       </main>
     );
   }
@@ -356,8 +381,8 @@ export default function RecipePage() {
               style={{ scrollSnapAlign: "start" }}
             >
               {/* Header row: step label + progress dots */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-baseline gap-2">
+              <div className="relative flex h-9 items-center justify-end">
+                <div className="absolute left-1/2 flex -translate-x-1/2 items-baseline gap-2">
                   <span className="text-xs font-bold uppercase tracking-widest text-[#558B2F]">
                     Step {step.step_number}
                   </span>
@@ -388,7 +413,7 @@ export default function RecipePage() {
               )}
 
               {/* Parsed instruction bullets — scrollable if text overflows */}
-              <div className="flex min-h-0 flex-1 flex-col justify-center space-y-5 overflow-y-auto py-6">
+              <div className="flex min-h-0 flex-1 flex-col justify-start space-y-5 overflow-y-auto py-6">
                 {subSteps.map((sub) => (
                   <div key={sub} className="flex gap-3">
                     <div className="mt-[7px] h-2 w-2 shrink-0 rounded-full bg-[#7CB342]" />

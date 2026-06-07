@@ -13,6 +13,7 @@ export {
 export { Checkbox } from "@/components/ui/checkbox";
 export { Input } from "@/components/ui/input";
 export { Label } from "@/components/ui/label";
+export { LoadingScreen } from "@/components/ui/LoadingScreen";
 export { Separator } from "@/components/ui/separator";
 export { Skeleton } from "@/components/ui/skeleton";
 export { Switch } from "@/components/ui/switch";

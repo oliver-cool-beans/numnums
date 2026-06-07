@@ -24,6 +24,7 @@ import {
 } from "@/components/dashboard";
 import { MealPlanOnboarding } from "@/components/onboarding/MealPlanOnboarding";
 import { NumnumsBackground } from "@/components/ui/NumnumsBackground";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { getDayOfWeek, getWeekAtOffset } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 
@@ -43,7 +44,11 @@ function PlanAheadCard({
 }) {
   return (
     <div className={className ?? "mx-5 mb-4 overflow-hidden rounded-[20px] bg-white shadow-sm"}>
-      <div className="flex items-center justify-between p-4">
+      <button
+        type="button"
+        onClick={onOpenModal}
+        className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-[#FAF7F3]"
+      >
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E7F6DF]">
             <CalendarDays aria-hidden="true" className="h-5 w-5 text-[#558B2F]" />
@@ -53,23 +58,19 @@ function PlanAheadCard({
             <p className="text-xs text-[#6F5B4B]">Schedule recipes for future weeks.</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onOpenModal}
-          className="flex-shrink-0 rounded-full bg-[#E7F6DF] px-3 py-1 text-xs font-semibold text-[#3A2A1F] transition-colors hover:bg-[#D4EFC4]"
-        >
+        <span className="flex-shrink-0 rounded-full bg-[#E7F6DF] px-3 py-1 text-xs font-semibold text-[#3A2A1F]">
           Plan
-        </button>
-      </div>
-      <div className="border-t border-[#F0E8DE] px-4 py-3">
-        <button
-          type="button"
-          onClick={onShopNextWeek}
-          className="text-xs font-medium text-[#7CB342] underline underline-offset-2 transition-colors hover:text-[#558B2F]"
-        >
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={onShopNextWeek}
+        className="block w-full border-t border-[#F0E8DE] px-4 py-3 text-left transition-colors hover:bg-[#FAF7F3]"
+      >
+        <span className="text-xs font-medium text-[#7CB342] underline underline-offset-2">
           Shop next week →
-        </button>
-      </div>
+        </span>
+      </button>
     </div>
   );
 }
@@ -151,32 +152,16 @@ function DashboardInner() {
     if (!userLoading && !user) router.replace("/");
   }, [user, userLoading, router]);
 
+  // We can't know whether to render the dashboard or redirect to "/" until the
+  // session resolves, so this is the rare full-page block — same screen as login.
   if (userLoading) {
-    return (
-      <div className="min-h-dvh w-full bg-white md:flex md:h-dvh md:overflow-hidden md:bg-[#FAF6F2]">
-        <SideNav activeTab={activeTab} onTabChange={handleTabChange} user={user} onSignOut={signOut} />
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-[#6F5B4B]">Loading...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen title="Loading" message="Getting your account ready..." />;
   }
 
   if (!user) return null;
 
-  if (mealPlanLoading) {
-    return (
-      <div className="min-h-dvh w-full bg-white md:flex md:h-dvh md:overflow-hidden md:bg-[#FAF6F2]">
-        <SideNav activeTab={activeTab} onTabChange={handleTabChange} user={user} onSignOut={signOut} />
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-[#6F5B4B]">Loading your week...</p>
-        </div>
-      </div>
-    );
-  }
-
   const skipOnboarding = searchParams.get("skipOnboarding") === "1";
-  const shouldShowOnboarding = !mealPlan && !skipOnboarding && !planTarget;
+  const shouldShowOnboarding = !mealPlanLoading && !mealPlan && !skipOnboarding && !planTarget;
 
   // ── Overlays (fullscreen) ──
   if (planTarget) {
@@ -221,6 +206,16 @@ function DashboardInner() {
   }
 
   const tomorrowRecipeName = getTomorrowRecipeName();
+  // The card has two very different final shapes ("today's recipe" hero vs.
+  // "build my week" empty state). Once the meal plan resolves we know which one
+  // we're heading toward, so pick the matching skeleton to avoid a layout jump —
+  // before that, default toward "empty" since it's the smaller of the two shapes.
+  const expectingTodayRecipe = !mealPlanLoading && Boolean(todayRecipeId);
+  const currentRecipeLoading = mealPlanLoading || (expectingTodayRecipe && todayRecipeLoading);
+  const currentRecipeLoadingKind: "recipe" | "empty" = expectingTodayRecipe ? "recipe" : "empty";
+  // Without a meal plan the week preview renders nothing at all — without this,
+  // a plan-less account would see the skeleton row collapse straight to empty space.
+  const weekPreviewLoading = mealPlanLoading || weekLoading;
 
   return (
     <div className="min-h-dvh w-full bg-white md:flex md:h-dvh md:overflow-hidden">
@@ -230,22 +225,25 @@ function DashboardInner() {
       <div className="flex flex-1 flex-col md:hidden">
         <main className="relative mx-auto flex min-h-dvh w-full max-w-[390px] flex-col overflow-hidden bg-white">
           <NumnumsBackground />
-          <div className="relative z-10 flex flex-1 flex-col overflow-y-auto pb-32">
+          <div className="relative z-10 flex flex-1 flex-col overflow-y-auto pb-16">
             <Header user={user} onAvatarClick={() => handleTabChange("profile")} onSignOut={signOut} />
             <GreetingBlock userName={user.name} />
             <div className="relative z-10">
               <CurrentRecipeCard
                 recipe={todayRecipe || null}
                 onBuildWeek={() => router.replace("/dashboard")}
+                onPlanAhead={() => setShowPlanModal(true)}
                 onStartCooking={() => todayRecipeId && router.push(`/dashboard/recipes/${todayRecipeId}`)}
-                isLoading={todayRecipeLoading}
+                isLoading={currentRecipeLoading}
+                loadingKind={currentRecipeLoadingKind}
               />
               {weekPreview.length > 0 && (
                 <WeekPreviewCards
                   days={weekPreview}
                   onDayClick={(recipeId) => router.push(`/dashboard/recipes/${recipeId}`)}
                   onViewFullWeek={() => {}}
-                  isLoading={weekLoading}
+                  onBuildNextWeek={() => setShowPlanModal(true)}
+                  isLoading={weekPreviewLoading}
                 />
               )}
               <ShoppingListCard
@@ -292,8 +290,10 @@ function DashboardInner() {
               className="overflow-hidden rounded-[28px] bg-[#E7F6DF]"
               recipe={todayRecipe || null}
               onBuildWeek={() => router.replace("/dashboard")}
+              onPlanAhead={() => setShowPlanModal(true)}
               onStartCooking={() => todayRecipeId && router.push(`/dashboard/recipes/${todayRecipeId}`)}
-              isLoading={todayRecipeLoading}
+              isLoading={currentRecipeLoading}
+              loadingKind={currentRecipeLoadingKind}
             />
 
             {weekPreview.length > 0 && (
@@ -304,7 +304,8 @@ function DashboardInner() {
                   days={weekPreview}
                   onDayClick={(recipeId) => router.push(`/dashboard/recipes/${recipeId}`)}
                   onViewFullWeek={() => {}}
-                  isLoading={weekLoading}
+                  onBuildNextWeek={() => setShowPlanModal(true)}
+                  isLoading={weekPreviewLoading}
                 />
               </div>
             )}

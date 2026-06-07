@@ -8,7 +8,7 @@ export type WeekPreviewDay = {
   day: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
   dayLabel: string;
   recipeId: string | null;
-  recipeName: string;
+  recipeName: string | null;
   recipeImage: string | null;
   difficulty: number | string | null;
   isToday: boolean;
@@ -127,7 +127,7 @@ export function useWeekPreview(userId: string | undefined) {
             difficulty: data.sunday_recipe_id ? recipeMap.get(data.sunday_recipe_id)?.difficulty || null : null,
             isToday: dayOfWeek === 0,
           },
-          ].filter((d) => d.recipeName !== null) as WeekPreviewDay[]; // Filter out null weekend days
+          ];
 
         setWeek(days);
       } catch (err) {

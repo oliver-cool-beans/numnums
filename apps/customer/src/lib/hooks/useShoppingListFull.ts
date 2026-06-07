@@ -142,6 +142,14 @@ export function useShoppingListFull(userId: string | undefined, weekFilter?: Wee
       .eq("id", listId);
   }, []);
 
+  const uncompleteList = useCallback(async (listId: string) => {
+    setList((prev) => (prev ? { ...prev, status: "confirmed" } : prev));
+    await supabase
+      .from("shopping_lists")
+      .update({ status: "confirmed", completed_at: null })
+      .eq("id", listId);
+  }, []);
+
   const quickComplete = useCallback(async (listId: string) => {
     setList((prev) =>
       prev
@@ -155,5 +163,5 @@ export function useShoppingListFull(userId: string | undefined, weekFilter?: Wee
       .eq("id", listId);
   }, []);
 
-  return { list, loading, error, toggleItem, completeList, quickComplete };
+  return { list, loading, error, toggleItem, completeList, uncompleteList, quickComplete };
 }

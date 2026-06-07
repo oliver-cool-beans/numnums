@@ -14,7 +14,21 @@
       "Bash(sips -z 192 192 apps/customer/public/app-logo.png --out apps/customer/public/icons/icon-192.png)",
       "Bash(sips -z 512 512 apps/customer/public/app-logo.png --out apps/customer/public/icons/icon-512.png)",
       "Bash(sips -z 180 180 apps/customer/public/app-logo.png --out apps/customer/public/icons/apple-touch-icon.png)",
-      "Bash(pnpm add *)"
+      "Bash(pnpm add *)",
+      "Bash(xargs -I{} git show {}:apps/customer/src/components/dashboard/PlanWeeksModal.tsx)",
+      "Bash(file /Users/oliver/Documents/github/numnums/apps/customer/public/icons/*.png)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts|jsx\\)$\")",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(python3 -)",
+      "Bash(ps -p 49908 -o command=)",
+      "Bash(curl -s http://localhost:3000/ -o /dev/null -w \"%{http_code}\\\\n\")",
+      "Bash(curl -s http://localhost:3000/dashboard -o /tmp/dash.html -w \"%{http_code}\\\\n\")",
+      "Read(//tmp/**)",
+      "Bash(curl -s http://localhost:3000/dashboard)",
+      "Bash(curl -s http://localhost:3000/auth/complete)",
+      "Bash(curl -s http://localhost:3000/dashboard/shopping-list)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/dashboard/shopping-list)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/dashboard/recipes/test-id)"
     ]
   }
 }
