@@ -16,7 +16,7 @@ export function BottomNav({ activeTab = "week", onTabChange }: BottomNavProps) {
   ] as const;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-[#E7D9CD] bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(58,42,31,0.06)] backdrop-blur-md md:hidden">
+    <nav className="relative z-20 shrink-0 border-t border-[#E7D9CD] bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(58,42,31,0.06)] backdrop-blur-md md:hidden">
       <div className="mx-auto flex w-full max-w-[390px] items-center justify-around px-2 py-1.5">
         {tabs.map((tab) => {
           const Icon = tab.icon;

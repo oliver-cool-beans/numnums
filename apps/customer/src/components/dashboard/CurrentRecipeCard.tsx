@@ -1,13 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import { CalendarDays, Clock } from "lucide-react";
 import { getTodayLabel } from "@/lib/utils";
 import { TodayRecipe } from "@/lib/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MealHeroCard } from "./MealHeroCard";
 
 type CurrentRecipeCardProps = {
   recipe: TodayRecipe | null;
+  /** True when the user has a meal plan for this week but simply didn't pick a recipe for today. */
+  hasMealPlan?: boolean;
   onStartCooking?: () => void;
   onBuildWeek?: () => void;
   onPlanAhead?: () => void;
@@ -24,6 +26,7 @@ type CurrentRecipeCardProps = {
 
 export function CurrentRecipeCard({
   recipe,
+  hasMealPlan,
   onStartCooking,
   onBuildWeek,
   onPlanAhead,
@@ -57,6 +60,23 @@ export function CurrentRecipeCard({
   }
 
   if (!recipe) {
+    if (hasMealPlan) {
+      return (
+        <div className={className ?? "mx-5 mb-4 rounded-[28px] bg-[#E7F6DF] p-5 text-center"}>
+          <p className="text-lg font-medium text-[#3A2A1F]">No dinner planned today</p>
+          <p className="mt-2 text-sm text-[#6F5B4B]">Enjoy the night off — or plan ahead for next time.</p>
+          <button
+            onClick={onPlanAhead}
+            className="mt-4 inline-flex items-center justify-center gap-1.5 text-sm font-medium text-[#558B2F] underline underline-offset-2 transition-colors hover:text-[#3A2A1F]"
+            type="button"
+          >
+            <CalendarDays className="size-4" aria-hidden="true" />
+            Plan ahead for future weeks
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className={className ?? "mx-5 mb-4 rounded-[28px] bg-[#E7F6DF] p-5 text-center"}>
         <p className="text-lg font-medium text-[#3A2A1F]">No week yet</p>
@@ -90,35 +110,19 @@ export function CurrentRecipeCard({
   };
 
   return (
-    <div className={className ?? "mx-5 mb-4 overflow-hidden rounded-[28px] bg-[#E7F6DF]"}>
-      {/* Hero image */}
-      <div className="relative h-52 w-full bg-[#D9CCBB] md:h-64">
-        {recipe.image_url ? (
-          <Image
-            src={recipe.image_url}
-            alt={recipe.name}
-            fill
-            className="object-cover"
-            sizes="(max-width: 390px) 390px, 390px"
-            priority
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-4xl">🍽️</div>
-        )}
-      </div>
-
-      <div className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-[#558B2F]">
-          Today &middot; {getTodayLabel()}
-        </p>
-        <h2 className="mt-1.5 text-2xl font-semibold leading-tight text-[#3A2A1F]">
-          {recipe.name}
-        </h2>
+    <MealHeroCard
+      className={className ?? "mx-5 mb-4 overflow-hidden rounded-[28px] bg-[#E7F6DF]"}
+      priority
+      imageUrl={recipe.image_url}
+      title={recipe.name}
+      eyebrow={`Today · ${getTodayLabel()}`}
+      meta={
         <div className="mt-2 flex items-center gap-1.5 text-[#6F5B4B]">
           <Clock className="h-4 w-4 shrink-0" aria-hidden />
           <span className="text-sm font-medium">{recipe.total_minutes} mins</span>
         </div>
-
+      }
+      footer={
         <button
           onClick={onStartCooking}
           disabled={isLoading}
@@ -127,7 +131,7 @@ export function CurrentRecipeCard({
         >
           {getCTAText()}
         </button>
-      </div>
-    </div>
+      }
+    />
   );
 }

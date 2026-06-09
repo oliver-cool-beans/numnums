@@ -46,20 +46,23 @@ export function ShoppingListCard({
         <button
           onClick={onReviewList}
           disabled={isLoading}
-          className="w-full rounded-[24px] bg-[#FFC850] px-5 py-5 text-left transition-all hover:bg-[#FFB834] active:scale-[0.98] disabled:opacity-50"
+          className="flex w-full items-center justify-between rounded-[20px] bg-[#FFE7A3] p-4 text-left transition-colors hover:bg-[#FFE093] disabled:opacity-50"
           type="button"
         >
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FFE7A3]">
-              <ShoppingCart aria-hidden="true" className="h-6 w-6 text-[#3A2A1F]" />
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFC850]">
+              <ShoppingCart aria-hidden="true" className="h-5 w-5 text-[#3A2A1F]" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-lg font-semibold text-[#3A2A1F]">Complete shopping list</p>
-              <p className="text-sm text-[#8B7355]">
+            <div>
+              <p className="text-sm font-semibold text-[#3A2A1F]">Complete shopping list</p>
+              <p className="text-xs text-[#8B7355]">
                 {isDraft ? "Your list is ready to review" : "Tap to build your list"}
               </p>
             </div>
           </div>
+          <span className="flex-shrink-0 text-sm font-semibold text-[#3A2A1F]">
+            {isDraft ? "Review" : "Start"}
+          </span>
         </button>
       </div>
     );

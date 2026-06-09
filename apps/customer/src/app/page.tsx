@@ -3,11 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { SiMeta } from "react-icons/si";
-import { SocialLoginButton } from "@/components/auth/social-login-button";
+import { MagicLinkForm } from "@/components/auth/magic-link-form";
 import { NumnumsBackground } from "@/components/ui/NumnumsBackground";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from "@/lib/supabase-client";
 
 const TYPEWRITER_TIMINGS_JSON = {
   typingBaseMs: 54,
@@ -73,9 +72,11 @@ export default function Home() {
   const [isHighlighting, setIsHighlighting] = useState(false);
   const phraseStartRef = useRef<number>(0);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
+    if (loading) return;
+
     console.info("[customer-home] Auth state observed on home page", {
       hasUser: Boolean(user),
       userId: user?.id ?? null,
@@ -88,7 +89,7 @@ export default function Home() {
       });
       router.replace("/dashboard");
     }
-  }, [user, router]);
+  }, [user, loading, router]);
 
   useEffect(() => {
     phraseStartRef.current = Date.now();
@@ -151,33 +152,12 @@ export default function Home() {
     };
   }, [headline, isHighlighting, titleIndex]);
 
+  if (loading || user) {
+    return <LoadingScreen />;
+  }
+
   const firstWord = headline.split(" ")[0] ?? "";
   const restOfHeadline = headline.slice(firstWord.length).trimStart();
-
-  const handleLogin = async () => {
-    const redirectUrl = new URL("/auth/complete", globalThis.window.location.origin);
-    redirectUrl.searchParams.set("next", "/dashboard");
-
-    console.info("[customer-home] Starting OAuth sign-in", {
-      provider: "facebook",
-      redirectTo: redirectUrl.toString(),
-    });
-
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "facebook",
-      options: { redirectTo: redirectUrl.toString() },
-    });
-
-    if (error) {
-      console.error("[customer-home] OAuth sign-in failed to start", error);
-      return;
-    }
-
-    console.info("[customer-home] OAuth sign-in started", {
-      provider: "facebook",
-      authUrl: data.url ?? null,
-    });
-  };
 
   return (
     <main className="relative min-h-dvh w-full bg-white">
@@ -237,13 +217,9 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Desktop-only in-flow button */}
+          {/* Desktop-only in-flow form */}
           <div className="hidden lg:mt-10 lg:block lg:max-w-[340px]">
-            <SocialLoginButton
-              label="login to meta"
-              logo={<SiMeta className="h-6 w-6" aria-hidden="true" />}
-              onClick={handleLogin}
-            />
+            <MagicLinkForm redirectPath="/auth/complete?next=/dashboard" />
           </div>
         </div>
 
@@ -267,11 +243,7 @@ export default function Home() {
 
       {/* Fixed CTA for mobile + tablet — lives outside the section to avoid iOS overflow/fixed bug */}
       <div className="fixed bottom-0 left-0 right-0 z-20 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 bg-gradient-to-t from-white via-white/90 to-transparent lg:hidden">
-        <SocialLoginButton
-          label="login to meta"
-          logo={<SiMeta className="h-6 w-6" aria-hidden="true" />}
-          onClick={handleLogin}
-        />
+        <MagicLinkForm redirectPath="/auth/complete?next=/dashboard" />
       </div>
     </main>
   );

@@ -6,7 +6,7 @@ import { ArrowLeft, Check, ChevronRight, Loader2, Sparkles } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn, getCurrentWeek, getWeekMondayDate, getWeekLabel } from "@/lib/utils";
+import { cn, getCurrentWeek, getDayOfWeek, getWeekAtOffset, getWeekMondayDate, getWeekLabel } from "@/lib/utils";
 import {
   type Weekday,
   type OnboardingRecipe,
@@ -19,7 +19,8 @@ import {
   getFilteredRecipes,
   matchesRequirement,
 } from "@/lib/recipeSchedule";
-import { persistWeekPlan } from "@/lib/mealPlanActions";
+import { persistWeekPlan, fetchWeekRecipeIds } from "@/lib/mealPlanActions";
+import { DIETARY_OPTIONS, fetchDietaryPreferences, saveDietaryPreferences } from "@/lib/dietaryPreferences";
 
 type OnboardingStep = "diet" | "recipes" | "days" | "ready";
 
@@ -40,6 +41,7 @@ type StepContentProps = {
   selectedRequirements: string[];
   selectedRecipeIds: string[];
   selectedDays: Weekday[];
+  pastDays: Weekday[];
   recipePages: OnboardingRecipe[][];
   activeRecipePage: OnboardingRecipe[];
   recipePage: number;
@@ -62,17 +64,7 @@ type StepContentProps = {
 
 const ONBOARDING_STEPS: OnboardingStep[] = ["diet", "recipes", "days", "ready"];
 const STEP_SECTION_CLASS = "mt-1 flex flex-1 flex-col";
-const REQUIRED_WEEKDAYS: Weekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday"];
-const DAY_ORDER: Weekday[] = [...REQUIRED_WEEKDAYS, "saturday", "sunday"];
-
-const DIETARY_OPTIONS = [
-  { id: "high-protein", label: "High protein" },
-  { id: "vegetarian", label: "Vegetarian" },
-  { id: "vegan", label: "Vegan" },
-  { id: "gluten-free", label: "Gluten free" },
-  { id: "dairy-free", label: "Dairy free" },
-  { id: "quick", label: "Quick wins" },
-] as const;
+const DAY_ORDER: Weekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 const DAY_LABELS: Record<Weekday, string> = {
   monday: "MON",
@@ -385,12 +377,14 @@ function RecipeStepCard({
 
 function DayStepCard({
   selectedDays,
+  pastDays,
   isSaving,
   weekLabel,
   onToggleDay,
   onBuildWeek,
 }: {
   selectedDays: Weekday[];
+  pastDays: Weekday[];
   isSaving: boolean;
   weekLabel: string;
   onToggleDay: (value: Weekday) => void;
@@ -403,7 +397,9 @@ function DayStepCard({
           <h2 className="text-xl font-semibold">Which days?</h2>
           <p className="mt-1 text-xs text-[#9E8B7E]">{weekLabel}</p>
           <p className="mt-1 text-sm leading-5 text-[#6F5B4B]">
-            Pick any days you want a dinner planned. At least one required.
+            {pastDays.length > 0
+              ? "Pick which of the remaining days you'd like to plan dinners for."
+              : "Pick the days you'd like to plan dinners for."}
           </p>
         </div>
         <Badge variant="secondary" className="bg-[#FFF7E8] px-3 text-[#6F5B4B]">
@@ -414,19 +410,24 @@ function DayStepCard({
       <div className="mt-3 grid grid-cols-3 gap-2.5">
         {DAY_ORDER.map((day) => {
           const selected = selectedDays.includes(day);
+          const isPast = pastDays.includes(day);
           const isLastSelected = selected && selectedDays.length === 1;
+          const isLocked = isPast || isLastSelected;
+          let dayStatusLabel = "Tap to add";
+          if (isPast) dayStatusLabel = "Already happened";
+          else if (selected) dayStatusLabel = "On";
           return (
             <button
               key={day}
               type="button"
               onClick={() => onToggleDay(day)}
-              disabled={isLastSelected}
+              disabled={isLocked}
               className={cn(
                 "relative min-h-[88px] cursor-pointer rounded-[24px] border bg-white px-3 py-3 text-left transition-all",
                 selected
                   ? "border-[#7CB342] shadow-[0_12px_30px_rgba(124,179,66,0.18)]"
                   : "border-[#E8DCCB] hover:-translate-y-0.5 hover:border-[#7CB342]/60",
-                isLastSelected && "cursor-default opacity-60",
+                isLocked && "cursor-default opacity-60",
               )}
             >
               <span
@@ -442,7 +443,7 @@ function DayStepCard({
               <div className="pr-8">
                 <p className="text-sm font-semibold leading-5 text-[#3A2A1F]">{DAY_LABELS[day]}</p>
                 <p className="mt-1 text-[0.68rem] leading-4 text-[#6F5B4B]">
-                  {selected ? "On" : "Tap to add"}
+                  {dayStatusLabel}
                 </p>
               </div>
             </button>
@@ -543,6 +544,7 @@ function StepContent({
   selectedRequirements,
   selectedRecipeIds,
   selectedDays,
+  pastDays,
   recipePages,
   activeRecipePage,
   recipePage,
@@ -590,6 +592,7 @@ function StepContent({
       return (
         <DayStepCard
           selectedDays={selectedDays}
+          pastDays={pastDays}
           isSaving={isSaving}
           weekLabel={weekLabel}
           onToggleDay={onToggleDay}
@@ -606,24 +609,31 @@ function StepContent({
 }
 
 export function MealPlanOnboarding({ userId, onCancel, targetWeek, targetYear }: MealPlanOnboardingProps) {
-  const [recipes, setRecipes] = useState<OnboardingRecipe[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedRequirements, setSelectedRequirements] = useState<string[]>([]);
-  const [step, setStep] = useState<OnboardingStep>("diet");
-  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
-  const [recipePage, setRecipePage] = useState(0);
-  const [selectedDays, setSelectedDays] = useState<Weekday[]>(REQUIRED_WEEKDAYS);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [readyState, setReadyState] = useState<ReadyState | null>(null);
-
   const { week: currentWeek, year: currentYear } = getCurrentWeek();
   const effectiveWeek = targetWeek ?? currentWeek;
   const effectiveYear = targetYear ?? currentYear;
   const weekMondayDate = getWeekMondayDate(effectiveWeek, effectiveYear);
   const weekLabel = getWeekLabel(effectiveWeek, effectiveYear);
   const isCurrentWeek = effectiveWeek === currentWeek && effectiveYear === currentYear;
+  // DAY_ORDER runs Monday..Sunday; getDayOfWeek() returns 0=Sunday..6=Saturday, so shift by 6 to align.
+  const todayDayIndex = (getDayOfWeek() + 6) % 7;
+  const pastDays = isCurrentWeek ? DAY_ORDER.filter((day) => DAY_ORDER.indexOf(day) < todayDayIndex) : [];
+
+  const [recipes, setRecipes] = useState<OnboardingRecipe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedRequirements, setSelectedRequirements] = useState<string[]>([]);
+  // Re-plans already have saved dietary preferences (set during first-time onboarding)
+  // and shouldn't make the user pick them again every time they replan a week.
+  const [step, setStep] = useState<OnboardingStep>(targetWeek !== undefined ? "recipes" : "diet");
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
+  const [recipePage, setRecipePage] = useState(0);
+  const [selectedDays, setSelectedDays] = useState<Weekday[]>(() =>
+    DAY_ORDER.filter((day) => !pastDays.includes(day)),
+  );
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [readyState, setReadyState] = useState<ReadyState | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -643,6 +653,16 @@ export function MealPlanOnboarding({ userId, onCancel, targetWeek, targetYear }:
     void load();
     return () => { isMounted = false; };
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchDietaryPreferences(userId)
+      .then((saved) => {
+        if (isMounted && saved.length > 0) setSelectedRequirements(saved);
+      })
+      .catch((fetchError) => console.error("[onboarding] Failed to load dietary preferences", fetchError));
+    return () => { isMounted = false; };
+  }, [userId]);
 
   const filteredRecipes = getFilteredRecipes(recipes, selectedRequirements);
   const recipePages = chunkRecipes(filteredRecipes);
@@ -669,6 +689,7 @@ export function MealPlanOnboarding({ userId, onCancel, targetWeek, targetYear }:
   };
 
   const handleToggleDay = (day: Weekday) => {
+    if (pastDays.includes(day)) return;
     setSelectedDays((current) => {
       if (current.includes(day)) {
         if (current.length <= 1) return current;
@@ -690,8 +711,18 @@ export function MealPlanOnboarding({ userId, onCancel, targetWeek, targetYear }:
         .map((id) => recipes.find((r) => r.id === id) ?? null)
         .filter((r): r is OnboardingRecipe => r !== null);
 
-      const plannedMeals = buildSchedule(selectedRecipes, filteredRecipes, selectedDays, selectedRequirements);
+      const lastWeek = getWeekAtOffset(-1);
+      const recentRecipeIds = new Set(await fetchWeekRecipeIds(userId, lastWeek.week, lastWeek.year));
+
+      const plannedMeals = buildSchedule(
+        selectedRecipes,
+        filteredRecipes,
+        selectedDays,
+        selectedRequirements,
+        recentRecipeIds,
+      );
       await persistWeekPlan(userId, plannedMeals, effectiveWeek, effectiveYear);
+      await saveDietaryPreferences(userId, selectedRequirements);
       setReadyState({ meals: plannedMeals, weekLabel });
       setStep("ready");
     } catch (buildError) {
@@ -719,6 +750,7 @@ export function MealPlanOnboarding({ userId, onCancel, targetWeek, targetYear }:
           selectedRequirements={selectedRequirements}
           selectedRecipeIds={selectedRecipeIds}
           selectedDays={selectedDays}
+          pastDays={pastDays}
           recipePages={recipePages}
           activeRecipePage={activeRecipePage}
           recipePage={recipePage}

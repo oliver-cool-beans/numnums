@@ -13,6 +13,8 @@ export type EnrichedItem = {
   is_pantry: boolean;
   product_name: string | null;
   product_category: string | null;
+  product_image_url: string | null;
+  product_source: string | null;
 };
 
 export type FullShoppingList = {
@@ -69,7 +71,7 @@ async function fetchListItems(listId: string): Promise<EnrichedItem[]> {
     .select(`
       id, ingredient_id, product_id, quantity_needed, is_checked,
       ingredients(handle, is_pantry),
-      products(name, category)
+      products(name, category, image_url, source)
     `)
     .eq("shopping_list_id", listId);
 
@@ -85,6 +87,8 @@ async function fetchListItems(listId: string): Promise<EnrichedItem[]> {
     is_pantry: row.ingredients?.is_pantry ?? false,
     product_name: row.products?.name ?? null,
     product_category: row.products?.category ?? null,
+    product_image_url: row.products?.image_url ?? null,
+    product_source: row.products?.source ?? null,
   }));
 }
 

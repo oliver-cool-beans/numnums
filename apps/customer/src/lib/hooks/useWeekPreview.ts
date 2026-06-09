@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase-client";
 import { getCurrentWeek } from "@/lib/utils";
 
@@ -19,12 +19,12 @@ export function useWeekPreview(userId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
+  const fetchWeekPreview = useCallback(async () => {
     if (!userId) {
       return;
     }
 
-    const fetchWeekPreview = async () => {
+    {
       try {
         const { week: currentWeek, year: currentYear } = getCurrentWeek();
         const now = new Date();
@@ -135,10 +135,12 @@ export function useWeekPreview(userId: string | undefined) {
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchWeekPreview();
+    }
   }, [userId]);
 
-  return { week, loading, error };
+  useEffect(() => {
+    void fetchWeekPreview();
+  }, [fetchWeekPreview]);
+
+  return { week, loading, error, refetch: fetchWeekPreview };
 }

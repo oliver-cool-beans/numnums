@@ -4,16 +4,139 @@ import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { WeekPreviewDay } from "@/lib/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Weekday } from "@/lib/recipeSchedule";
+
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_TOLERANCE = 12;
 
 type WeekPreviewCardsProps = {
   days: WeekPreviewDay[];
   onDayClick?: (recipeId: string) => void;
+  onLongPressDay?: (day: Weekday, recipeId: string) => void;
   onViewFullWeek?: () => void;
   onBuildNextWeek?: () => void;
   isLoading?: boolean;
   className?: string;
   flat?: boolean;
 };
+
+// Long-press (tab-hold) gesture: fires `onLongPress` if the pointer stays down
+// without moving past the tolerance for LONG_PRESS_MS, and suppresses the
+// follow-up click so it doesn't also trigger the regular tap action.
+function useLongPress(onLongPress: () => void) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+  const firedRef = useRef(false);
+
+  const clear = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
+    startRef.current = null;
+  };
+
+  return {
+    onPointerDown: (e: React.PointerEvent) => {
+      firedRef.current = false;
+      startRef.current = { x: e.clientX, y: e.clientY };
+      timerRef.current = setTimeout(() => {
+        firedRef.current = true;
+        onLongPress();
+      }, LONG_PRESS_MS);
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      const start = startRef.current;
+      if (!start) return;
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+      if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_TOLERANCE) clear();
+    },
+    onPointerUp: clear,
+    onPointerLeave: clear,
+    onPointerCancel: clear,
+    onClickCapture: (e: React.MouseEvent) => {
+      if (firedRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        firedRef.current = false;
+      }
+    },
+  };
+}
+
+function DayCard({
+  day,
+  isLoading,
+  cardRef,
+  onDayClick,
+  onLongPressDay,
+}: {
+  day: WeekPreviewDay;
+  isLoading?: boolean;
+  cardRef?: (el: HTMLButtonElement | null) => void;
+  onDayClick?: (recipeId: string) => void;
+  onLongPressDay?: (day: Weekday, recipeId: string) => void;
+}) {
+  const hasRecipe = Boolean(day.recipeId);
+
+  let cardBorderClass = "border-dashed border-[#E8DCCB] bg-[#FAF6F2]";
+  if (day.isToday) {
+    cardBorderClass = "border-[#7CB342] bg-[#F0F9E8]";
+  } else if (hasRecipe) {
+    cardBorderClass = "border-transparent bg-white hover:border-[#D9CCBB]";
+  }
+
+  const longPress = useLongPress(() => {
+    if (day.recipeId) onLongPressDay?.(day.day, day.recipeId);
+  });
+
+  return (
+    <button
+      ref={cardRef}
+      onClick={() => day.recipeId && onDayClick?.(day.recipeId)}
+      className={`flex-shrink-0 w-[120px] h-[220px] rounded-[22px] overflow-hidden border-2 flex flex-col justify-between transition-all ${cardBorderClass}`}
+      type="button"
+      disabled={isLoading || !hasRecipe}
+      {...(hasRecipe && onLongPressDay ? longPress : null)}
+    >
+      {/* Top group: day label + image */}
+      <div className="shrink-0">
+        <p className="px-2.5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[#6F5B4B]">
+          {day.dayLabel}
+        </p>
+        {hasRecipe ? (
+          <div className="relative mt-1 h-[140px] w-full bg-[#E7D9CD]">
+            <Image
+              src={day.recipeImage ?? "/pot-angle.png"}
+              alt={day.recipeName ?? ""}
+              fill
+              className="object-cover"
+              sizes="120px"
+            />
+          </div>
+        ) : (
+          <div className="mt-1 flex h-[140px] w-full items-center justify-center bg-[#F0E8DE]">
+            <span className="text-xs font-medium text-[#B7A696]">Day off</span>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom group: recipe name + difficulty bar — always pinned to bottom */}
+      <div className="shrink-0 px-2.5 pb-2.5">
+        {hasRecipe && (
+          <>
+            <p className="text-[11px] font-medium line-clamp-2 text-left leading-tight text-[#3A2A1F]">
+              {day.recipeName}
+            </p>
+            <div
+              className="mt-1.5 h-[3px] w-full rounded-full"
+              style={{ backgroundColor: difficultyColor(day.difficulty) }}
+            />
+          </>
+        )}
+      </div>
+    </button>
+  );
+}
 
 function difficultyColor(difficulty: number | string | null): string {
   if (typeof difficulty === "number") {
@@ -32,6 +155,7 @@ function difficultyColor(difficulty: number | string | null): string {
 export function WeekPreviewCards({
   days,
   onDayClick,
+  onLongPressDay,
   onViewFullWeek,
   onBuildNextWeek,
   isLoading,
@@ -67,64 +191,16 @@ export function WeekPreviewCards({
 
   if (!days || days.length === 0) return null;
 
-  const dayCards = days.map((day) => {
-    const hasRecipe = Boolean(day.recipeId);
-
-    let cardBorderClass = "border-dashed border-[#E8DCCB] bg-[#FAF6F2]";
-    if (day.isToday) {
-      cardBorderClass = "border-[#7CB342] bg-[#F0F9E8]";
-    } else if (hasRecipe) {
-      cardBorderClass = "border-transparent bg-white hover:border-[#D9CCBB]";
-    }
-
-    return (
-      <button
-        key={day.day}
-        ref={day.isToday ? todayRef : undefined}
-        onClick={() => day.recipeId && onDayClick?.(day.recipeId)}
-        className={`flex-shrink-0 w-[120px] h-[220px] rounded-[22px] overflow-hidden border-2 flex flex-col justify-between transition-all ${cardBorderClass}`}
-        type="button"
-        disabled={isLoading || !hasRecipe}
-      >
-        {/* Top group: day label + image */}
-        <div className="shrink-0">
-          <p className="px-2.5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[#6F5B4B]">
-            {day.dayLabel}
-          </p>
-          {hasRecipe ? (
-            <div className="relative mt-1 h-[140px] w-full bg-[#E7D9CD]">
-              <Image
-                src={day.recipeImage ?? "/pot-angle.png"}
-                alt={day.recipeName ?? ""}
-                fill
-                className="object-cover"
-                sizes="120px"
-              />
-            </div>
-          ) : (
-            <div className="mt-1 flex h-[140px] w-full items-center justify-center bg-[#F0E8DE]">
-              <span className="text-xs font-medium text-[#B7A696]">Day off</span>
-            </div>
-          )}
-        </div>
-
-        {/* Bottom group: recipe name + difficulty bar — always pinned to bottom */}
-        <div className="shrink-0 px-2.5 pb-2.5">
-          {hasRecipe && (
-            <>
-              <p className="text-[11px] font-medium line-clamp-2 text-left leading-tight text-[#3A2A1F]">
-                {day.recipeName}
-              </p>
-              <div
-                className="mt-1.5 h-[3px] w-full rounded-full"
-                style={{ backgroundColor: difficultyColor(day.difficulty) }}
-              />
-            </>
-          )}
-        </div>
-      </button>
-    );
-  });
+  const dayCards = days.map((day) => (
+    <DayCard
+      key={day.day}
+      day={day}
+      isLoading={isLoading}
+      cardRef={day.isToday ? (el) => { todayRef.current = el; } : undefined}
+      onDayClick={onDayClick}
+      onLongPressDay={onLongPressDay}
+    />
+  ));
 
   const endOfWeekCard = (
     <div

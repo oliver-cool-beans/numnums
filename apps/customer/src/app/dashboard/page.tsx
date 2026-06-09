@@ -3,12 +3,14 @@
 import Image from "next/image";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Shuffle, X } from "lucide-react";
 import {
   useUserMealPlan,
   useTodayRecipe,
   useWeekPreview,
   useShoppingList,
+  useFriendsToday,
+  useRecipeSwap,
 } from "@/lib/hooks";
 import {
   Header,
@@ -18,17 +20,79 @@ import {
   ShoppingListCard,
   NextUpCard,
   SwapCard,
+  FriendsTodayBlock,
   BottomNav,
   SideNav,
   PlanWeeksModal,
+  RecipeSwapPicker,
+  EnableNotificationsPrompt,
 } from "@/components/dashboard";
 import { MealPlanOnboarding } from "@/components/onboarding/MealPlanOnboarding";
 import { NumnumsBackground } from "@/components/ui/NumnumsBackground";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
-import { getDayOfWeek, getWeekAtOffset } from "@/lib/utils";
+import { getCurrentWeek, getDayOfWeek, getWeekAtOffset } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import type { Weekday } from "@/lib/recipeSchedule";
+import {
+  clearQueuedNotificationPrompt,
+  peekQueuedNotificationPrompt,
+  type NotificationPromptCopy,
+} from "@/lib/notificationPrompts";
 
 type PlanningTarget = { week: number; year: number } | null;
+type DayMenuTarget = { day: Weekday; recipeId: string; recipeName: string | null };
+
+// ─── Day quick-action menu (long-press on a week card) ──────────────────────
+
+function DayActionSheet({
+  target,
+  onViewRecipe,
+  onSwap,
+  onClose,
+}: {
+  target: DayMenuTarget;
+  onViewRecipe: () => void;
+  onSwap: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 md:items-center" onClick={onClose}>
+      <div
+        className="w-full max-w-[390px] rounded-t-[28px] bg-white p-4 pb-6 shadow-[0_-8px_40px_rgba(58,42,31,0.16)] md:max-w-[360px] md:rounded-[28px]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <p className="truncate pr-2 text-sm font-semibold text-[#3A2A1F]">{target.recipeName ?? "This recipe"}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex size-8 items-center justify-center rounded-full text-[#9E8B7E] transition-colors hover:bg-[#FAF6F2]"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="mt-3 space-y-2">
+          <button
+            type="button"
+            onClick={onViewRecipe}
+            className="block w-full rounded-[16px] border border-[#E8DCCB] bg-white px-4 py-3 text-left text-sm font-medium text-[#3A2A1F] transition-colors hover:bg-[#FAF6F2]"
+          >
+            View recipe
+          </button>
+          <button
+            type="button"
+            onClick={onSwap}
+            className="flex w-full items-center gap-2 rounded-[16px] bg-[#7CB342] px-4 py-3 text-left text-sm font-semibold text-white transition-colors hover:bg-[#689F38]"
+          >
+            <Shuffle className="size-4" />
+            Swap this recipe
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Plan Ahead card ─────────────────────────────────────────────────────────
 
@@ -95,9 +159,17 @@ function DashboardInner() {
   const [activeTab, setActiveTab] = useState<"week" | "list" | "favorites" | "profile">("week");
   const [planTarget, setPlanTarget] = useState<PlanningTarget>(null);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [dayMenuTarget, setDayMenuTarget] = useState<DayMenuTarget | null>(null);
+  const [notificationPrompt, setNotificationPrompt] = useState<NotificationPromptCopy | null>(() =>
+    peekQueuedNotificationPrompt(),
+  );
+
+  useEffect(() => {
+    clearQueuedNotificationPrompt();
+  }, []);
 
   const { user, loading: userLoading, signOut } = useAuth();
-  const { mealPlan, loading: mealPlanLoading } = useUserMealPlan(user?.id);
+  const { mealPlan, loading: mealPlanLoading, refetch: refetchMealPlan } = useUserMealPlan(user?.id);
 
   const getTodayRecipeId = (): string | undefined => {
     if (!mealPlan) return undefined;
@@ -112,8 +184,14 @@ function DashboardInner() {
   const todayRecipeId = getTodayRecipeId();
 
   const { recipe: todayRecipe, loading: todayRecipeLoading } = useTodayRecipe(user?.id, todayRecipeId);
-  const { week: weekPreview, loading: weekLoading } = useWeekPreview(user?.id);
+  const { week: weekPreview, loading: weekLoading, refetch: refetchWeekPreview } = useWeekPreview(user?.id);
   const { list: shoppingList, loading: listLoading } = useShoppingList(user?.id);
+  const { friendsToday, loading: friendsTodayLoading } = useFriendsToday(user?.id);
+
+  const recipeSwap = useRecipeSwap(user?.id, () => {
+    refetchMealPlan();
+    refetchWeekPreview();
+  });
 
   const getTomorrowRecipeName = (): string | null => {
     if (!mealPlan) return null;
@@ -131,6 +209,7 @@ function DashboardInner() {
   const handleTabChange = (tab: "week" | "list" | "favorites" | "profile") => {
     setActiveTab(tab);
     if (tab === "list") router.push("/dashboard/shopping-list");
+    if (tab === "profile") router.push("/dashboard/profile");
   };
 
   const handleShopNextWeek = () => {
@@ -143,9 +222,46 @@ function DashboardInner() {
     setPlanTarget({ week, year });
   };
 
+  const handleViewWeek = (week: number, year: number) => {
+    setShowPlanModal(false);
+    router.push(`/dashboard/week?week=${week}&year=${year}`);
+  };
+
+  const handleViewFullWeek = () => {
+    const { week, year } = getCurrentWeek();
+    router.push(`/dashboard/week?week=${week}&year=${year}`);
+  };
+
+  const handleLongPressDay = (day: Weekday, recipeId: string) => {
+    const dayEntry = weekPreview.find((d) => d.day === day);
+    setDayMenuTarget({ day, recipeId, recipeName: dayEntry?.recipeName ?? null });
+  };
+
+  const handleSwapFromMenu = () => {
+    if (!dayMenuTarget) return;
+    const { week, year } = getCurrentWeek();
+    recipeSwap.open({
+      day: dayMenuTarget.day,
+      week,
+      year,
+      currentRecipeId: dayMenuTarget.recipeId,
+    });
+    setDayMenuTarget(null);
+  };
+
   const handlePlanningDone = () => {
+    const replannedCurrentWeek =
+      planTarget && (() => {
+        const current = getWeekAtOffset(0);
+        return planTarget.week === current.week && planTarget.year === current.year;
+      })();
     setPlanTarget(null);
     setShowPlanModal(false);
+    if (replannedCurrentWeek) {
+      refetchMealPlan();
+      refetchWeekPreview();
+      router.replace("/dashboard");
+    }
   };
 
   useEffect(() => {
@@ -200,6 +316,7 @@ function DashboardInner() {
           userId={user.id}
           onClose={() => setShowPlanModal(false)}
           onPlanWeek={handlePlanWeek}
+          onViewWeek={handleViewWeek}
         />
       </FullScreenOverlay>
     );
@@ -222,15 +339,30 @@ function DashboardInner() {
       <SideNav activeTab={activeTab} onTabChange={handleTabChange} user={user} onSignOut={signOut} />
 
       {/* ── Mobile layout (hidden on md+) ── */}
-      <div className="flex flex-1 flex-col md:hidden">
-        <main className="relative mx-auto flex min-h-dvh w-full max-w-[390px] flex-col overflow-hidden bg-white">
+      <div className="flex h-dvh flex-col md:hidden">
+        <main className="relative mx-auto flex w-full max-w-[390px] flex-1 flex-col overflow-hidden bg-white">
           <NumnumsBackground />
-          <div className="relative z-10 flex flex-1 flex-col overflow-y-auto pb-16">
-            <Header user={user} onAvatarClick={() => handleTabChange("profile")} onSignOut={signOut} />
+          <div className="relative z-10 flex flex-1 flex-col overflow-y-auto pb-6">
+            <Header
+              user={user}
+              onAvatarClick={() => handleTabChange("profile")}
+              onInviteFriends={() => router.push("/dashboard/friends")}
+              onManageGroups={() => router.push("/dashboard/groups")}
+              onSignOut={signOut}
+            />
             <GreetingBlock userName={user.name} />
+            {notificationPrompt && user?.id && (
+              <EnableNotificationsPrompt
+                userId={user.id}
+                title={notificationPrompt.title}
+                message={notificationPrompt.message}
+                onDismiss={() => setNotificationPrompt(null)}
+              />
+            )}
             <div className="relative z-10">
               <CurrentRecipeCard
                 recipe={todayRecipe || null}
+                hasMealPlan={Boolean(mealPlan)}
                 onBuildWeek={() => router.replace("/dashboard")}
                 onPlanAhead={() => setShowPlanModal(true)}
                 onStartCooking={() => todayRecipeId && router.push(`/dashboard/recipes/${todayRecipeId}`)}
@@ -241,9 +373,17 @@ function DashboardInner() {
                 <WeekPreviewCards
                   days={weekPreview}
                   onDayClick={(recipeId) => router.push(`/dashboard/recipes/${recipeId}`)}
-                  onViewFullWeek={() => {}}
+                  onLongPressDay={handleLongPressDay}
+                  onViewFullWeek={handleViewFullWeek}
                   onBuildNextWeek={() => setShowPlanModal(true)}
                   isLoading={weekPreviewLoading}
+                />
+              )}
+              {(friendsToday === null || friendsToday.length > 0) && (
+                <FriendsTodayBlock
+                  friendsToday={friendsToday || []}
+                  onRecipeClick={(recipeId) => router.push(`/dashboard/recipes/${recipeId}`)}
+                  isLoading={friendsTodayLoading}
                 />
               )}
               <ShoppingListCard
@@ -263,8 +403,8 @@ function DashboardInner() {
               />
             </div>
           </div>
+          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
         </main>
-        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
 
       {/* ── Desktop layout (hidden on mobile) ── */}
@@ -285,10 +425,21 @@ function DashboardInner() {
             </div>
           </div>
 
+          {notificationPrompt && user?.id && (
+            <EnableNotificationsPrompt
+              className="mb-5 rounded-[24px] border border-[#E8DCCB] bg-white px-5 py-4 shadow-[0_2px_12px_rgba(58,42,31,0.06)]"
+              userId={user.id}
+              title={notificationPrompt.title}
+              message={notificationPrompt.message}
+              onDismiss={() => setNotificationPrompt(null)}
+            />
+          )}
+
           <div className="flex flex-col gap-5">
             <CurrentRecipeCard
               className="overflow-hidden rounded-[28px] bg-[#E7F6DF]"
               recipe={todayRecipe || null}
+              hasMealPlan={Boolean(mealPlan)}
               onBuildWeek={() => router.replace("/dashboard")}
               onPlanAhead={() => setShowPlanModal(true)}
               onStartCooking={() => todayRecipeId && router.push(`/dashboard/recipes/${todayRecipeId}`)}
@@ -303,9 +454,22 @@ function DashboardInner() {
                   flat
                   days={weekPreview}
                   onDayClick={(recipeId) => router.push(`/dashboard/recipes/${recipeId}`)}
-                  onViewFullWeek={() => {}}
+                  onLongPressDay={handleLongPressDay}
+                  onViewFullWeek={handleViewFullWeek}
                   onBuildNextWeek={() => setShowPlanModal(true)}
                   isLoading={weekPreviewLoading}
+                />
+              </div>
+            )}
+
+            {(friendsToday === null || friendsToday.length > 0) && (
+              <div className="rounded-[24px] bg-white p-5 shadow-[0_2px_12px_rgba(58,42,31,0.06)]">
+                <FriendsTodayBlock
+                  className="space-y-4"
+                  flat
+                  friendsToday={friendsToday || []}
+                  onRecipeClick={(recipeId) => router.push(`/dashboard/recipes/${recipeId}`)}
+                  isLoading={friendsTodayLoading}
                 />
               </div>
             )}
@@ -342,6 +506,31 @@ function DashboardInner() {
         </div>
         </div>
       </div>
+
+      {dayMenuTarget && (
+        <DayActionSheet
+          target={dayMenuTarget}
+          onViewRecipe={() => {
+            const { recipeId } = dayMenuTarget;
+            setDayMenuTarget(null);
+            router.push(`/dashboard/recipes/${recipeId}`);
+          }}
+          onSwap={handleSwapFromMenu}
+          onClose={() => setDayMenuTarget(null)}
+        />
+      )}
+
+      {recipeSwap.target && (
+        <RecipeSwapPicker
+          userId={user.id}
+          day={recipeSwap.target.day}
+          title="Swap recipe"
+          currentRecipeId={recipeSwap.target.currentRecipeId}
+          recentRecipeIds={recipeSwap.recentRecipeIds}
+          onCancel={recipeSwap.close}
+          onSelect={(recipe) => void recipeSwap.handleSelect(recipe)}
+        />
+      )}
     </div>
   );
 }

@@ -17,6 +17,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "imvmyuwcmyspwdvvbfsj.supabase.co",
       },
+      {
+        protocol: "https",
+        hostname: "dm.apac.cms.aldi.cx",
+      },
     ],
   },
 };

@@ -1,12 +1,12 @@
 "use client";
 
 import { CalendarDays, Heart, LogOut, ShoppingCart } from "lucide-react";
-import { CurrentUser } from "@/lib/hooks";
+import type { AuthUser } from "@/lib/auth-context";
 
 type SideNavProps = {
   activeTab?: "week" | "list" | "favorites" | "profile";
   onTabChange?: (tab: "week" | "list" | "favorites" | "profile") => void;
-  user?: CurrentUser | null;
+  user?: AuthUser | null;
   onSignOut?: () => void;
 };
 

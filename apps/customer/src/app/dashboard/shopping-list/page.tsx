@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, Suspense } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronLeft, ChevronRight, Check, ShoppingCart } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -47,6 +48,10 @@ function deriveCategory(handle: string, productCategory: string | null, isPantry
   return "Pantry & Other";
 }
 
+const SOURCE_LOGOS: Record<string, { src: string; alt: string }> = {
+  aldi: { src: "/aldi.svg", alt: "ALDI" },
+};
+
 function formatHandle(handle: string): string {
   return handle
     .split("-")
@@ -70,8 +75,14 @@ function groupByCategory(items: EnrichedItem[]): { category: string; items: Enri
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function ItemRow({ item, onToggle }: { item: EnrichedItem; onToggle: (id: string, checked: boolean) => void }) {
-  const name = item.ingredient_handle ? formatHandle(item.ingredient_handle) : "Item";
+  const name = item.product_name
+    ? item.product_name
+    : item.ingredient_handle
+      ? formatHandle(item.ingredient_handle)
+      : "Item";
+  const subtitle = item.product_name && item.ingredient_handle ? formatHandle(item.ingredient_handle) : null;
   const qty = item.quantity_needed > 1 ? `×${item.quantity_needed}` : null;
+  const sourceLogo = item.product_source ? SOURCE_LOGOS[item.product_source.toLowerCase()] : null;
 
   return (
     <button
@@ -91,15 +102,40 @@ function ItemRow({ item, onToggle }: { item: EnrichedItem; onToggle: (id: string
       >
         {item.is_checked && <Check className="h-4 w-4 text-white" strokeWidth={3} />}
       </span>
-      <span
-        className={cn(
-          "flex-1 text-base font-medium text-[#3A2A1F]",
-          item.is_checked && "line-through",
-        )}
-      >
-        {name}
+      {item.product_image_url ? (
+        <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-[#F5EDE0]">
+          <Image src={item.product_image_url} alt={name} fill className="object-contain" sizes="44px" />
+          {sourceLogo && (
+            <span className="absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white shadow-sm">
+              <Image src={sourceLogo.src} alt={sourceLogo.alt} width={24} height={24} className="object-contain" />
+            </span>
+          )}
+        </span>
+      ) : null}
+      <span className="min-w-0 flex-1">
+        <span
+          className={cn(
+            "block truncate text-base font-medium text-[#3A2A1F]",
+            item.is_checked && "line-through",
+          )}
+        >
+          {name}
+        </span>
+        <span className="flex items-center gap-1.5">
+          {subtitle && (
+            <span className="truncate text-xs text-[#9E8B7E]">{subtitle}</span>
+          )}
+          {sourceLogo && !item.product_image_url && (
+            <Image src={sourceLogo.src} alt={sourceLogo.alt} width={14} height={14} className="shrink-0 object-contain" />
+          )}
+          {sourceLogo && (
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[#7CB342]">
+              {sourceLogo.alt}
+            </span>
+          )}
+        </span>
       </span>
-      {qty && <span className="text-sm font-semibold text-[#9E8B7E]">{qty}</span>}
+      {qty && <span className="shrink-0 text-sm font-semibold text-[#9E8B7E]">{qty}</span>}
     </button>
   );
 }

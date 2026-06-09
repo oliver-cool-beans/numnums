@@ -5,9 +5,9 @@ import { ArrowLeft, Calendar, Check, ChevronRight, Loader2, Sparkles } from "luc
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase-client";
 import { cn, getWeekAtOffset, getWeekLabel } from "@/lib/utils";
-import { buildSchedule, fetchOnboardingRecipes, type OnboardingRecipe, type Weekday } from "@/lib/recipeSchedule";
+import { buildSchedule, fetchOnboardingRecipes, getFilteredRecipes, type Weekday } from "@/lib/recipeSchedule";
 import { persistWeekPlan, fetchWeekRecipeIds } from "@/lib/mealPlanActions";
-import { getCurrentWeek } from "@/lib/utils";
+import { fetchDietaryPreferences } from "@/lib/dietaryPreferences";
 
 const DEFAULT_DAYS: Weekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday"];
 const LOOK_AHEAD_WEEKS = 4;
@@ -16,6 +16,7 @@ type WeekEntry = {
   week: number;
   year: number;
   label: string;
+  isCurrent: boolean;
   isPlanned: boolean;
 };
 
@@ -28,9 +29,10 @@ type PlanWeeksModalProps = {
   userId: string;
   onClose: () => void;
   onPlanWeek: (week: number, year: number) => void;
+  onViewWeek: (week: number, year: number) => void;
 };
 
-export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalProps) {
+export function PlanWeeksModal({ userId, onClose, onPlanWeek, onViewWeek }: PlanWeeksModalProps) {
   const [weeks, setWeeks] = useState<WeekEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingAll, setGeneratingAll] = useState(false);
@@ -42,7 +44,7 @@ export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalPr
     let isMounted = true;
 
     async function load() {
-      const targets = Array.from({ length: LOOK_AHEAD_WEEKS }, (_, i) => getWeekAtOffset(i + 1));
+      const targets = Array.from({ length: LOOK_AHEAD_WEEKS + 1 }, (_, i) => getWeekAtOffset(i));
 
       const { data } = await supabase
         .from("user_meal_plans")
@@ -60,10 +62,11 @@ export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalPr
       );
 
       setWeeks(
-        targets.map(({ week, year }) => ({
+        targets.map(({ week, year }, index) => ({
           week,
           year,
           label: getWeekLabel(week, year),
+          isCurrent: index === 0,
           isPlanned: planned.has(`${year}-${week}`),
         })),
       );
@@ -78,22 +81,26 @@ export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalPr
   const canGenerate = unplannedWeeks.length > 0;
 
   const generateWeeks = async (targets: WeekEntry[]) => {
-    const allRecipes = await fetchOnboardingRecipes();
+    const [allRecipes, preferences] = await Promise.all([
+      fetchOnboardingRecipes(),
+      fetchDietaryPreferences(userId),
+    ]);
 
-    // Get previous week's recipe IDs to avoid repeating them in the first generated week
-    const prevWeek = getWeekAtOffset(0);
-    const prevIds = new Set(
-      await fetchWeekRecipeIds(userId, prevWeek.week, prevWeek.year),
+    // Seed variety against last week's recipes so the new picks don't just repeat them
+    const lastWeek = getWeekAtOffset(-1);
+    const lastWeekIds = new Set(
+      await fetchWeekRecipeIds(userId, lastWeek.week, lastWeek.year),
     );
 
-    let excludeIds = prevIds;
+    let excludeIds = lastWeekIds;
     let plannedCount = 0;
 
     for (const target of targets) {
       const pool = allRecipes.filter((r) => !excludeIds.has(r.id));
       // Fall back to full pool if not enough recipes remain after excluding
       const effectivePool = pool.length >= DEFAULT_DAYS.length ? pool : allRecipes;
-      const meals = buildSchedule([], effectivePool, DEFAULT_DAYS, []);
+      const filteredPool = getFilteredRecipes(effectivePool, preferences);
+      const meals = buildSchedule([], filteredPool, DEFAULT_DAYS, preferences);
       await persistWeekPlan(userId, meals, target.week, target.year);
       excludeIds = new Set(meals.map((m) => m.recipe.id));
       plannedCount++;
@@ -161,7 +168,7 @@ export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalPr
 
       <h1 className="mt-5 text-[1.8rem] font-semibold leading-[1.02]">Plan ahead</h1>
       <p className="mt-1 text-sm leading-5 text-[#6F5B4B]">
-        Pick recipes for future weeks or let us auto-fill them for you.
+        Pick recipes for this week or any week ahead, or let us auto-fill them for you.
       </p>
 
       {/* Week list */}
@@ -169,7 +176,7 @@ export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalPr
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-semibold text-[#3A2A1F]">
             <Calendar className="size-4 text-[#7CB342]" />
-            Upcoming weeks
+            This week & beyond
           </div>
           {!loading && canGenerate && (
             <button
@@ -211,19 +218,27 @@ export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalPr
                     : "border-[#E8DCCB] bg-white",
                 )}
               >
-                <div>
-                  <p className="text-sm font-semibold text-[#3A2A1F]">{w.label}</p>
+                <button
+                  type="button"
+                  onClick={() => onViewWeek(w.week, w.year)}
+                  className="text-left"
+                >
+                  <p className="text-sm font-semibold text-[#3A2A1F] underline-offset-2 hover:underline">
+                    {w.isCurrent ? "This week" : w.label}
+                  </p>
                   {w.isPlanned ? (
                     <p className="mt-0.5 flex items-center gap-1 text-xs text-[#558B2F]">
                       <Check className="size-3" strokeWidth={2.5} />
-                      Planned
+                      {w.isCurrent ? `Planned · ${w.label}` : "Planned"}
                     </p>
                   ) : (
-                    <p className="mt-0.5 text-xs text-[#9E8B7E]">Not yet planned</p>
+                    <p className="mt-0.5 text-xs text-[#9E8B7E]">
+                      {w.isCurrent ? `Not yet planned · ${w.label}` : "Not yet planned"}
+                    </p>
                   )}
-                </div>
-                {w.isPlanned ? null : (
-                  <div className="flex items-center gap-2">
+                </button>
+                <div className="flex items-center gap-2">
+                  {!w.isPlanned && (
                     <button
                       type="button"
                       onClick={() => void handleAutoGenerateWeek(w)}
@@ -238,16 +253,16 @@ export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalPr
                         <Sparkles className="size-3.5" />
                       )}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => onPlanWeek(w.week, w.year)}
-                      className="inline-flex items-center gap-1 rounded-full bg-[#3A2A1F] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#5C4A3A]"
-                    >
-                      Plan
-                      <ChevronRight className="size-3" />
-                    </button>
-                  </div>
-                )}
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onPlanWeek(w.week, w.year)}
+                    className="inline-flex items-center gap-1 rounded-full bg-[#3A2A1F] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#5C4A3A]"
+                  >
+                    {w.isPlanned ? "Re-plan" : "Plan"}
+                    <ChevronRight className="size-3" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -280,8 +295,10 @@ export function PlanWeeksModal({ userId, onClose, onPlanWeek }: PlanWeeksModalPr
       {/* All weeks already planned */}
       {!loading && !canGenerate && !result && (
         <div className="mt-8 rounded-[20px] border border-[#7CB342]/40 bg-[#F4FFE8] px-5 py-5 text-center">
-          <p className="text-base font-semibold text-[#3A2A1F]">All upcoming weeks are planned!</p>
-          <p className="mt-1 text-sm text-[#6F5B4B]">Check back next week for more slots.</p>
+          <p className="text-base font-semibold text-[#3A2A1F]">You&apos;re all planned up!</p>
+          <p className="mt-1 text-sm text-[#6F5B4B]">
+            Use re-plan or re-generate above if you&apos;d like to change any week.
+          </p>
         </div>
       )}
     </div>

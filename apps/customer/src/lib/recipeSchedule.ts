@@ -81,6 +81,7 @@ function scoreRecipeSimilarity(
   candidate: OnboardingRecipe,
   anchors: OnboardingRecipe[],
   selectedRequirements: string[],
+  recentRecipeIds?: Set<string>,
 ) {
   let score = 0;
   const candidateBadges = buildRecipeBadges(candidate);
@@ -97,6 +98,7 @@ function scoreRecipeSimilarity(
   }
   score +=
     selectedRequirements.filter((r) => matchesRequirement(candidate, r)).length * 2;
+  if (recentRecipeIds?.has(candidate.id)) score -= 5;
   return score;
 }
 
@@ -119,6 +121,7 @@ export function buildSchedule(
   allRecipes: OnboardingRecipe[],
   plannedDays: Weekday[],
   selectedRequirements: string[],
+  recentRecipeIds?: Set<string>,
 ): ReadyMeal[] {
   const selectedIds = new Set(selectedRecipes.map((r) => r.id));
   const meals: ReadyMeal[] = [];
@@ -126,8 +129,8 @@ export function buildSchedule(
     .filter((r) => !selectedIds.has(r.id))
     .sort(
       (a, b) =>
-        scoreRecipeSimilarity(b, selectedRecipes, selectedRequirements) -
-        scoreRecipeSimilarity(a, selectedRecipes, selectedRequirements),
+        scoreRecipeSimilarity(b, selectedRecipes, selectedRequirements, recentRecipeIds) -
+        scoreRecipeSimilarity(a, selectedRecipes, selectedRequirements, recentRecipeIds),
     );
 
   for (let i = 0; i < plannedDays.length; i++) {

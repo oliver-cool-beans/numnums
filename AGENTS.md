@@ -128,6 +128,14 @@ These rules exist to keep the codebase small, reusable, and easy to extend witho
 - When using the Supabase Data API for application tables, keep grants and RLS policies explicit and capture both in the same migration.
 - Admin-only tables exposed through the Data API must have RLS enabled and must restrict access to authenticated admin users only.
 
+### Database size
+
+- We run on the Supabase free tier — total database size must be kept to a minimum.
+- Every migration and schema design must use the minimal structure required to operate: no speculative columns, no redundant pointers that duplicate data already derivable from another table, no indexes that don't serve a real query or RLS policy.
+- Before adding a column, ask whether the value can be derived from an existing row instead (e.g. an "owner" is just the membership row with `role = 'owner'`, not a separate foreign key on the parent).
+- Prefer composite primary keys over surrogate UUIDs for pure join/membership tables — it avoids an extra column and an extra unique index.
+- Drop bookkeeping columns whose information is already captured elsewhere (e.g. don't store who/when an invite was accepted on the invite row when the resulting membership row already records both).
+
 ### Schema changes
 
 - Any database schema change, grant, trigger, function, seed dependency, or RLS policy change must be captured in this repository as a migration or tracked schema file.

@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CurrentUser } from "@/lib/hooks";
+import type { AuthUser } from "@/lib/auth-context";
 
 type HeaderProps = {
-  user: CurrentUser | null;
+  user: AuthUser | null;
   onAvatarClick?: () => void;
+  onInviteFriends?: () => void;
+  onManageGroups?: () => void;
   onSignOut?: () => void;
   compact?: boolean;
 };
 
-export function Header({ user, onAvatarClick, onSignOut, compact }: HeaderProps) {
+export function Header({ user, onAvatarClick, onInviteFriends, onManageGroups, onSignOut, compact }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -58,6 +60,26 @@ export function Header({ user, onAvatarClick, onSignOut, compact }: HeaderProps)
             }}
           >
             Profile
+          </button>
+          <button
+            role="menuitem"
+            className="w-full text-left px-4 py-3 text-sm text-[#3A2A1F] hover:bg-[#F5EDE6] transition-colors"
+            onClick={() => {
+              setMenuOpen(false);
+              onInviteFriends?.();
+            }}
+          >
+            Manage friends
+          </button>
+          <button
+            role="menuitem"
+            className="w-full text-left px-4 py-3 text-sm text-[#3A2A1F] hover:bg-[#F5EDE6] transition-colors"
+            onClick={() => {
+              setMenuOpen(false);
+              onManageGroups?.();
+            }}
+          >
+            Manage family
           </button>
           <button
             role="menuitem"

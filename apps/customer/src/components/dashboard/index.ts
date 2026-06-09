@@ -1,6 +1,8 @@
 export { Header } from "./Header";
 export { GreetingBlock } from "./GreetingBlock";
 export { CurrentRecipeCard } from "./CurrentRecipeCard";
+export { MealHeroCard } from "./MealHeroCard";
+export { FriendsTodayBlock } from "./FriendsTodayBlock";
 export { WeekPreviewCards } from "./WeekPreviewCards";
 export { ShoppingListCard } from "./ShoppingListCard";
 export { NextUpCard } from "./NextUpCard";
@@ -8,3 +10,7 @@ export { SwapCard } from "./SwapCard";
 export { BottomNav } from "./BottomNav";
 export { SideNav } from "./SideNav";
 export { PlanWeeksModal } from "./PlanWeeksModal";
+export { RecipeSwapPicker } from "./RecipeSwapPicker";
+export { EnableNotificationsPrompt } from "./EnableNotificationsPrompt";
+export { PendingInvitesList } from "./PendingInvitesList";
+export { InviteBlock } from "./InviteBlock";
