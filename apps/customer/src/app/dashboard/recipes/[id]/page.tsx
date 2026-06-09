@@ -476,12 +476,19 @@ export default function RecipePage() {
             <p className="mt-1 text-center text-base text-[#6F5B4B]">{recipe.headline}</p>
           )}
 
-          <button
-            onClick={handleComplete}
-            className="mt-8 w-full rounded-full bg-[#7CB342] py-4 font-semibold text-white transition-all active:scale-[0.97]"
-          >
-            Mark as complete
-          </button>
+          {recipe.progress.status === "completed" ? (
+            <div className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-[#E7F6DF] py-4 font-semibold text-[#4a8a55]">
+              <Check size={20} />
+              Dinner done!
+            </div>
+          ) : (
+            <button
+              onClick={handleComplete}
+              className="mt-8 w-full rounded-full bg-[#7CB342] py-4 font-semibold text-white transition-all active:scale-[0.97]"
+            >
+              Mark as complete
+            </button>
+          )}
           <button
             onClick={scrollToTop}
             className="mt-4 flex items-center gap-1.5 text-sm text-[#6F5B4B]"

@@ -14,3 +14,4 @@ export { RecipeSwapPicker } from "./RecipeSwapPicker";
 export { EnableNotificationsPrompt } from "./EnableNotificationsPrompt";
 export { PendingInvitesList } from "./PendingInvitesList";
 export { InviteBlock } from "./InviteBlock";
+export { FamilyWeekPlan } from "./FamilyWeekPlan";

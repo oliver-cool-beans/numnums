@@ -39,7 +39,6 @@ import {
   type NotificationPromptCopy,
 } from "@/lib/notificationPrompts";
 
-type PlanningTarget = { week: number; year: number } | null;
 type DayMenuTarget = { day: Weekday; recipeId: string; recipeName: string | null };
 
 // ─── Day quick-action menu (long-press on a week card) ──────────────────────
@@ -157,7 +156,6 @@ function DashboardInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"week" | "list" | "favorites" | "profile">("week");
-  const [planTarget, setPlanTarget] = useState<PlanningTarget>(null);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [dayMenuTarget, setDayMenuTarget] = useState<DayMenuTarget | null>(null);
   const [notificationPrompt, setNotificationPrompt] = useState<NotificationPromptCopy | null>(() =>
@@ -217,11 +215,6 @@ function DashboardInner() {
     router.push(`/dashboard/shopping-list?week=${week}&year=${year}`);
   };
 
-  const handlePlanWeek = (week: number, year: number) => {
-    setShowPlanModal(false);
-    setPlanTarget({ week, year });
-  };
-
   const handleViewWeek = (week: number, year: number) => {
     setShowPlanModal(false);
     router.push(`/dashboard/week?week=${week}&year=${year}`);
@@ -249,21 +242,6 @@ function DashboardInner() {
     setDayMenuTarget(null);
   };
 
-  const handlePlanningDone = () => {
-    const replannedCurrentWeek =
-      planTarget && (() => {
-        const current = getWeekAtOffset(0);
-        return planTarget.week === current.week && planTarget.year === current.year;
-      })();
-    setPlanTarget(null);
-    setShowPlanModal(false);
-    if (replannedCurrentWeek) {
-      refetchMealPlan();
-      refetchWeekPreview();
-      router.replace("/dashboard");
-    }
-  };
-
   useEffect(() => {
     if (!userLoading && !user) router.replace("/");
   }, [user, userLoading, router]);
@@ -277,21 +255,7 @@ function DashboardInner() {
   if (!user) return null;
 
   const skipOnboarding = searchParams.get("skipOnboarding") === "1";
-  const shouldShowOnboarding = !mealPlanLoading && !mealPlan && !skipOnboarding && !planTarget;
-
-  // ── Overlays (fullscreen) ──
-  if (planTarget) {
-    return (
-      <FullScreenOverlay>
-        <MealPlanOnboarding
-          userId={user.id}
-          targetWeek={planTarget.week}
-          targetYear={planTarget.year}
-          onCancel={handlePlanningDone}
-        />
-      </FullScreenOverlay>
-    );
-  }
+  const shouldShowOnboarding = !mealPlanLoading && !mealPlan && !skipOnboarding;
 
   if (shouldShowOnboarding) {
     return (
@@ -315,7 +279,6 @@ function DashboardInner() {
         <PlanWeeksModal
           userId={user.id}
           onClose={() => setShowPlanModal(false)}
-          onPlanWeek={handlePlanWeek}
           onViewWeek={handleViewWeek}
         />
       </FullScreenOverlay>

@@ -186,7 +186,7 @@ export default function Home() {
               <span className="splash-veg-2 absolute right-5 top-[92px] h-6 w-6 rounded-full bg-[#E58A45]" />
             </div>
 
-            <p className="splash-headline mt-0 mb-0 min-h-[2.2em] max-w-[360px] pb-0 text-center text-[min(62px,8svh)] font-[600] leading-[0.9] tracking-[-0.04em] md:min-h-0 md:max-w-[540px] md:text-[76px] lg:text-left xl:text-[88px]">
+            <p className="splash-headline mt-0 mb-0 min-h-[1.9em] max-w-[360px] pb-0 text-center text-[min(62px,8svh)] font-[600] leading-[0.9] tracking-[-0.04em] md:max-w-[540px] md:text-[76px] lg:text-left xl:text-[88px]">
               <span
                 className={`inline-block px-1 py-0.5 rounded-sm transition-all duration-300 ${
                   isHighlighting ? "typewriter-text-highlight" : ""

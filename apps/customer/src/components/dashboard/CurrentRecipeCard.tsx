@@ -104,8 +104,8 @@ export function CurrentRecipeCard({
   const isInProgress = recipe.progress.status === "in_progress";
 
   const getCTAText = () => {
-    if (isCompleted) return "Mark dinner done";
-    if (isInProgress) return "Continue cooking";
+    if (isCompleted) return "Dinner done!";
+    if (isInProgress) return "Mark dinner done";
     return "Start cooking";
   };
 
@@ -124,9 +124,9 @@ export function CurrentRecipeCard({
       }
       footer={
         <button
-          onClick={onStartCooking}
-          disabled={isLoading}
-          className="mt-5 w-full rounded-full bg-[#7CB342] px-4 py-4 text-center text-lg font-semibold text-white hover:bg-[#689F38] active:scale-[0.98] disabled:opacity-50 transition-all"
+          onClick={isCompleted ? undefined : onStartCooking}
+          disabled={isLoading || isCompleted}
+          className={`mt-5 w-full rounded-full px-4 py-4 text-center text-lg font-semibold transition-all ${isCompleted ? "bg-[#E7F6DF] text-[#4a8a55] cursor-default" : "bg-[#7CB342] text-white hover:bg-[#689F38] active:scale-[0.98]"} disabled:opacity-50`}
           type="button"
         >
           {getCTAText()}

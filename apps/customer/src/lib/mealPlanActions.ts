@@ -1,5 +1,42 @@
 import { supabase } from "./supabase-client";
-import type { ReadyMeal } from "./recipeSchedule";
+import {
+  buildSchedule,
+  fetchOnboardingRecipes,
+  getFilteredRecipes,
+  type ReadyMeal,
+  type Weekday,
+} from "./recipeSchedule";
+import { fetchDietaryPreferences } from "./dietaryPreferences";
+import { getWeekAtOffset } from "./utils";
+
+const DEFAULT_PLAN_DAYS: Weekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+
+export async function generateWeekPlan(
+  userId: string,
+  week: number,
+  year: number,
+  excludeIds?: Set<string>,
+): Promise<ReadyMeal[]> {
+  let effectiveExclude = excludeIds;
+
+  if (!effectiveExclude) {
+    const lastWeek = getWeekAtOffset(-1);
+    const lastWeekIds = await fetchWeekRecipeIds(userId, lastWeek.week, lastWeek.year);
+    effectiveExclude = new Set(lastWeekIds);
+  }
+
+  const [allRecipes, preferences] = await Promise.all([
+    fetchOnboardingRecipes(),
+    fetchDietaryPreferences(userId),
+  ]);
+
+  const pool = allRecipes.filter((r) => !effectiveExclude!.has(r.id));
+  const effectivePool = pool.length >= DEFAULT_PLAN_DAYS.length ? pool : allRecipes;
+  const filteredPool = getFilteredRecipes(effectivePool, preferences);
+  const meals = buildSchedule([], filteredPool, DEFAULT_PLAN_DAYS, preferences);
+  await persistWeekPlan(userId, meals, week, year);
+  return meals;
+}
 
 type IngredientLinkRow = {
   ingredient_id: string;

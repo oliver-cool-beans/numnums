@@ -12,6 +12,7 @@ export type WeekPreviewDay = {
   recipeImage: string | null;
   difficulty: number | string | null;
   isToday: boolean;
+  isCompleted: boolean;
 };
 
 export function useWeekPreview(userId: string | undefined) {
@@ -54,14 +55,15 @@ export function useWeekPreview(userId: string | undefined) {
           data.sunday_recipe_id,
         ].filter(Boolean);
 
-        const { data: recipes, error: recipesError } = await supabase
-          .from("recipes")
-          .select("id, name, image_url, difficulty")
-          .in("id", recipeIds);
+        const [{ data: recipes, error: recipesError }, { data: progressRows }] = await Promise.all([
+          supabase.from("recipes").select("id, name, image_url, difficulty").in("id", recipeIds),
+          supabase.from("user_recipe_progress").select("recipe_id, status").eq("user_id", userId).in("recipe_id", recipeIds),
+        ]);
 
         if (recipesError) throw recipesError;
 
         const recipeMap = new Map(recipes?.map((r) => [r.id, r]) || []);
+        const completedIds = new Set((progressRows ?? []).filter((p) => p.status === "completed").map((p) => p.recipe_id));
 
           const days: WeekPreviewDay[] = [
           {
@@ -72,6 +74,7 @@ export function useWeekPreview(userId: string | undefined) {
             recipeImage: recipeMap.get(data.monday_recipe_id)?.image_url || null,
             difficulty: recipeMap.get(data.monday_recipe_id)?.difficulty || null,
             isToday: dayOfWeek === 1,
+            isCompleted: completedIds.has(data.monday_recipe_id),
           },
           {
             day: "tuesday",
@@ -81,6 +84,7 @@ export function useWeekPreview(userId: string | undefined) {
             recipeImage: recipeMap.get(data.tuesday_recipe_id)?.image_url || null,
             difficulty: recipeMap.get(data.tuesday_recipe_id)?.difficulty || null,
             isToday: dayOfWeek === 2,
+            isCompleted: completedIds.has(data.tuesday_recipe_id),
           },
           {
             day: "wednesday",
@@ -90,6 +94,7 @@ export function useWeekPreview(userId: string | undefined) {
             recipeImage: recipeMap.get(data.wednesday_recipe_id)?.image_url || null,
             difficulty: recipeMap.get(data.wednesday_recipe_id)?.difficulty || null,
             isToday: dayOfWeek === 3,
+            isCompleted: completedIds.has(data.wednesday_recipe_id),
           },
           {
             day: "thursday",
@@ -99,6 +104,7 @@ export function useWeekPreview(userId: string | undefined) {
             recipeImage: recipeMap.get(data.thursday_recipe_id)?.image_url || null,
             difficulty: recipeMap.get(data.thursday_recipe_id)?.difficulty || null,
             isToday: dayOfWeek === 4,
+            isCompleted: completedIds.has(data.thursday_recipe_id),
           },
           {
             day: "friday",
@@ -108,6 +114,7 @@ export function useWeekPreview(userId: string | undefined) {
             recipeImage: recipeMap.get(data.friday_recipe_id)?.image_url || null,
             difficulty: recipeMap.get(data.friday_recipe_id)?.difficulty || null,
             isToday: dayOfWeek === 5,
+            isCompleted: completedIds.has(data.friday_recipe_id),
           },
           {
             day: "saturday",
@@ -117,6 +124,7 @@ export function useWeekPreview(userId: string | undefined) {
             recipeImage: data.saturday_recipe_id ? recipeMap.get(data.saturday_recipe_id)?.image_url || null : null,
             difficulty: data.saturday_recipe_id ? recipeMap.get(data.saturday_recipe_id)?.difficulty || null : null,
             isToday: dayOfWeek === 6,
+            isCompleted: completedIds.has(data.saturday_recipe_id),
           },
           {
             day: "sunday",
@@ -126,6 +134,7 @@ export function useWeekPreview(userId: string | undefined) {
             recipeImage: data.sunday_recipe_id ? recipeMap.get(data.sunday_recipe_id)?.image_url || null : null,
             difficulty: data.sunday_recipe_id ? recipeMap.get(data.sunday_recipe_id)?.difficulty || null : null,
             isToday: dayOfWeek === 0,
+            isCompleted: completedIds.has(data.sunday_recipe_id),
           },
           ];
 

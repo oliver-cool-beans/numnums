@@ -79,7 +79,9 @@ function DayCard({
   const hasRecipe = Boolean(day.recipeId);
 
   let cardBorderClass = "border-dashed border-[#E8DCCB] bg-[#FAF6F2]";
-  if (day.isToday) {
+  if (day.isCompleted) {
+    cardBorderClass = "border-[#7CB342] bg-white";
+  } else if (day.isToday) {
     cardBorderClass = "border-[#7CB342] bg-[#F0F9E8]";
   } else if (hasRecipe) {
     cardBorderClass = "border-transparent bg-white hover:border-[#D9CCBB]";
@@ -109,9 +111,18 @@ function DayCard({
               src={day.recipeImage ?? "/pot-angle.png"}
               alt={day.recipeName ?? ""}
               fill
-              className="object-cover"
+              className={`object-cover${day.isCompleted ? " opacity-60" : ""}`}
               sizes="120px"
             />
+            {day.isCompleted && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7CB342]">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                    <path d="M3.5 9.5L7 13L14.5 5.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="mt-1 flex h-[140px] w-full items-center justify-center bg-[#F0E8DE]">

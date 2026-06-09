@@ -75,6 +75,7 @@ function groupByCategory(items: EnrichedItem[]): { category: string; items: Enri
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function ItemRow({ item, onToggle }: { item: EnrichedItem; onToggle: (id: string, checked: boolean) => void }) {
+  const [imgLoaded, setImgLoaded] = useState(false);
   const name = item.product_name
     ? item.product_name
     : item.ingredient_handle
@@ -104,7 +105,8 @@ function ItemRow({ item, onToggle }: { item: EnrichedItem; onToggle: (id: string
       </span>
       {item.product_image_url ? (
         <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-[#F5EDE0]">
-          <Image src={item.product_image_url} alt={name} fill className="object-contain" sizes="44px" />
+          {!imgLoaded && <Skeleton className="absolute inset-0 rounded-xl bg-[#F0E8DE]" />}
+          <Image src={item.product_image_url} alt={name} fill className="object-contain" sizes="44px" onLoad={() => setImgLoaded(true)} />
           {sourceLogo && (
             <span className="absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white shadow-sm">
               <Image src={sourceLogo.src} alt={sourceLogo.alt} width={24} height={24} className="object-contain" />

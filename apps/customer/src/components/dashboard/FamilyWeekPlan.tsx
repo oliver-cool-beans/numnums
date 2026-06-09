@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { Loader2, Shuffle, ThumbsDown, ThumbsUp } from "lucide-react";
 
-import { cn, getCurrentWeek, getWeekAtOffset } from "@/lib/utils";
+import { cn, getWeekAtOffset } from "@/lib/utils";
 import type { Weekday, OnboardingRecipe } from "@/lib/recipeSchedule";
 import {
   type FamilyWeekPlan as FamilyWeekPlanData,
@@ -24,6 +24,8 @@ type FamilyWeekPlanProps = {
   ownerId: string;
   currentUserId: string;
   isOwner: boolean;
+  week: number;
+  year: number;
 };
 
 type PickerState = {
@@ -34,7 +36,7 @@ type PickerState = {
 
 type PendingState = { day: Weekday; action: "select" | "approve" | "dismiss" } | null;
 
-export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner }: FamilyWeekPlanProps) {
+export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner, week, year }: FamilyWeekPlanProps) {
   const [plan, setPlan] = useState<FamilyWeekPlanData | null>(null);
   const [suggestions, setSuggestions] = useState<SwapSuggestion[]>([]);
   const [recentRecipeIds, setRecentRecipeIds] = useState<Set<string>>(new Set());
@@ -42,8 +44,6 @@ export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner }: Fa
   const [error, setError] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [pending, setPending] = useState<PendingState>(null);
-
-  const { week, year } = getCurrentWeek();
 
   const load = useCallback(async () => {
     const lastWeek = getWeekAtOffset(-1);
@@ -59,15 +59,18 @@ export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner }: Fa
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
-    setError(null);
-    load()
-      .catch((loadError) => {
+    void (async () => {
+      if (!isMounted) return;
+      setLoading(true);
+      setError(null);
+      try {
+        await load();
+      } catch (loadError) {
         if (isMounted) setError(loadError instanceof Error ? loadError.message : "We couldn't load this week's plan.");
-      })
-      .finally(() => {
+      } finally {
         if (isMounted) setLoading(false);
-      });
+      }
+    })();
     return () => { isMounted = false; };
   }, [load]);
 
@@ -158,9 +161,8 @@ export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner }: Fa
   }
 
   return (
-    <div className="mt-4">
-      <h3 className="text-sm font-semibold text-[#3A2A1F]">This week&apos;s plan</h3>
-      <p className="mt-0.5 text-xs text-[#6F5B4B]">
+    <div className="mt-2">
+      <p className="px-1 text-xs text-[#6F5B4B]">
         {isOwner
           ? "Approve suggestions, switch a recipe directly, or suggest your own swap."
           : "Suggest a swap — the family owner will review it."}

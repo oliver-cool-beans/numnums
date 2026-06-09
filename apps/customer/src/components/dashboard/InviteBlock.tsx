@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 import Image from "next/image";
 import { Copy, Check, Link2, Mail, QrCode, Share, X } from "lucide-react";
 import QRCode from "react-qr-code";
@@ -33,11 +33,7 @@ export function InviteBlock({ userId, kind, familyId, label, createInvite, onSen
   const [emailInput, setEmailInput] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSentTo, setEmailSentTo] = useState<string | null>(null);
-  const [canShare, setCanShare] = useState(false);
-
-  useEffect(() => {
-    setCanShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
-  }, []);
+  const [canShare] = useState(() => globalThis.navigator !== undefined && globalThis.navigator.share !== undefined);
 
   const ensureLink = useCallback(async (): Promise<string | null> => {
     if (link) return link;

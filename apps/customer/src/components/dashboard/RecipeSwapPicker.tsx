@@ -57,7 +57,12 @@ export function RecipeSwapPicker({
     Promise.all([fetchOnboardingRecipes(), fetchDietaryPreferences(userId)])
       .then(([allRecipes, savedPreferences]) => {
         if (!isMounted) return;
-        setRecipes(allRecipes);
+        const shuffled = [...allRecipes];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+        }
+        setRecipes(shuffled);
         setPreferences(savedPreferences);
       })
       .catch((fetchError) => {
