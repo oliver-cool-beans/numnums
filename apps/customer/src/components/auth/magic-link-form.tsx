@@ -4,6 +4,10 @@ import { useState, type FormEvent } from "react";
 import { Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase-client";
+import { useRouter } from "next/navigation";
+
+const DEV_EMAIL = process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL;
+const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -30,6 +34,7 @@ export function MagicLinkForm({ redirectPath, lockedEmail, helperText, className
   const [email, setEmail] = useState(lockedEmail ?? "");
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const isValidEmail = EMAIL_PATTERN.test(email.trim());
 
@@ -49,13 +54,27 @@ export function MagicLinkForm({ redirectPath, lockedEmail, helperText, className
     });
 
     if (otpError) {
-      console.error("[magic-link] Failed to send sign-in link", otpError);
+      console.error("[magic-link] Failed to send sign-in link", { message: otpError.message, status: otpError.status, code: (otpError as { code?: string }).code, cause: otpError.cause });
       setError(otpError.message || "Could not send the link. Try again in a moment.");
       setStatus("idle");
       return;
     }
 
     setStatus("sent");
+  }
+
+  async function handleDevBypass() {
+    if (!DEV_EMAIL || !DEV_PASSWORD) return;
+    setStatus("sending");
+    setError(null);
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: DEV_EMAIL, password: DEV_PASSWORD });
+    if (signInError) {
+      setError(signInError.message);
+      setStatus("idle");
+      return;
+    }
+    const next = new URL(redirectPath, globalThis.window.location.origin);
+    router.push(next.pathname + next.search);
   }
 
   if (status === "sent") {
@@ -98,6 +117,17 @@ export function MagicLinkForm({ redirectPath, lockedEmail, helperText, className
       >
         {status === "sending" ? "Sending..." : "Continue with email"}
       </button>
+
+      {process.env.NODE_ENV === "development" && DEV_EMAIL && DEV_PASSWORD && (
+        <button
+          type="button"
+          onClick={handleDevBypass}
+          disabled={status === "sending"}
+          className="mt-1 w-full rounded-full border border-dashed border-orange-400 py-2 text-sm text-orange-500 hover:bg-orange-50 disabled:opacity-60"
+        >
+          [dev] sign in as {DEV_EMAIL}
+        </button>
+      )}
     </form>
   );
 }

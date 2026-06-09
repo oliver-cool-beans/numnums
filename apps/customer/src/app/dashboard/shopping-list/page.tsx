@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, Check, ShoppingCart } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Check, ShoppingCart, Copy } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useShoppingListFull, type EnrichedItem } from "@/lib/hooks/useShoppingListFull";
 import { SideNav } from "@/components/dashboard";
@@ -287,6 +287,26 @@ function ShoppingListInner() {
     weekFilter,
   );
 
+  const [listCopied, setListCopied] = useState(false);
+
+  const copyList = () => {
+    if (!list) return;
+    const groups = groupByCategory(list.items);
+    const lines: string[] = ["Shopping list:"];
+    for (const { category, items } of groups) {
+      lines.push("");
+      lines.push(category);
+      for (const item of items) {
+        const name = item.product_name || formatHandle(item.ingredient_handle);
+        const qty = item.quantity_needed > 1 ? ` ×${item.quantity_needed}` : "";
+        lines.push(`• ${name}${qty}`);
+      }
+    }
+    navigator.clipboard.writeText(lines.join("\n"));
+    setListCopied(true);
+    setTimeout(() => setListCopied(false), 2000);
+  };
+
   useEffect(() => {
     if (!authLoading && !user) router.replace("/");
   }, [authLoading, user, router]);
@@ -483,8 +503,16 @@ function ShoppingListInner() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="flex-1 min-w-0">
+          <div className="flex flex-1 min-w-0 items-center gap-1">
             <h1 className="text-2xl font-semibold text-[#3A2A1F]">Shopping list</h1>
+            <button
+              type="button"
+              onClick={copyList}
+              aria-label="Copy shopping list"
+              className="flex items-center justify-center rounded-full p-2 text-[#A89080] transition-colors active:text-[#3A2A1F]"
+            >
+              {listCopied ? <Check className="h-[18px] w-[18px] text-[#7CB342]" strokeWidth={2.5} /> : <Copy className="h-[18px] w-[18px]" />}
+            </button>
           </div>
           <span className="shrink-0 text-sm text-[#9E8B7E]">{checkedItems} / {totalItems}</span>
         </header>

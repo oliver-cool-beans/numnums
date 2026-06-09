@@ -11,6 +11,7 @@ import {
   ChefHat,
   AlignJustify,
   Layers,
+  Copy,
 } from "lucide-react";
 import { useTodayRecipe } from "@/lib/hooks";
 import { useAuth } from "@/lib/auth-context";
@@ -141,6 +142,19 @@ export default function RecipePage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [smoothMode, setSmoothMode] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
+  const [ingredientsCopied, setIngredientsCopied] = useState(false);
+
+  const copyIngredients = () => {
+    const lines = [`${recipe?.name ?? "Recipe"} – ingredients:`];
+    for (const ing of recipe?.ingredients ?? []) {
+      const name = formatIngredientName(ing.handle);
+      const qty = ing.quantity != null ? ` – ${ing.quantity}${ing.unit ? ` ${ing.unit}` : ""}` : "";
+      lines.push(`• ${name}${qty}`);
+    }
+    navigator.clipboard.writeText(lines.join("\n"));
+    setIngredientsCopied(true);
+    setTimeout(() => setIngredientsCopied(false), 2000);
+  };
 
   const toggleIngredient = (handle: string) => {
     setCheckedIngredients((prev) => {
@@ -330,7 +344,16 @@ export default function RecipePage() {
             <p className="text-xs font-semibold uppercase tracking-widest text-[#A89080]">
               What you&apos;ll need
             </p>
-            <h2 className="mt-1 text-2xl font-semibold text-[#3A2A1F]">Ingredients</h2>
+            <div className="mt-1 flex items-center justify-between">
+              <h2 className="text-2xl font-semibold text-[#3A2A1F]">Ingredients</h2>
+              <button
+                onClick={copyIngredients}
+                aria-label="Copy ingredients"
+                className="flex items-center justify-center rounded-full p-2 text-[#A89080] transition-colors active:text-[#3A2A1F]"
+              >
+                {ingredientsCopied ? <Check size={18} strokeWidth={2.5} className="text-[#7CB342]" /> : <Copy size={18} />}
+              </button>
+            </div>
             <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
               <div className="flex flex-col divide-y divide-[#EADFCE]">
                 {recipe.ingredients.map((ing) => {

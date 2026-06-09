@@ -166,6 +166,10 @@ export default function GroupsPage() {
         </div>
       </header>
 
+      <div className="mx-5 mb-2 rounded-xl bg-[#F5EDE6] px-3 py-2 text-xs text-[#8A6F5C]">
+        One plan, shared by the whole family — everyone plans together.
+      </div>
+
       <div className="flex-1 overflow-y-auto px-5 pb-10">
         {families === null ? (
           <p className="px-1 text-sm text-[#9E8B7E]">Loading...</p>
@@ -182,10 +186,10 @@ export default function GroupsPage() {
             const isOwner = family.members.some((m) => m.user_id === user?.id && m.role === "owner");
 
             return (
-              <div className="rounded-xl border border-[#F0E8DE] p-4">
-                <h2 className="text-base font-semibold text-[#3A2A1F]">{family.name}</h2>
-
-                <ul className="mt-3 space-y-1">
+              <>
+                <h2 className="mb-3 px-1 text-base font-semibold text-[#3A2A1F]">{family.name}</h2>
+                <div className="rounded-xl border border-[#F0E8DE] p-4">
+                <ul className="space-y-1">
                   {family.members.map((member) => (
                     <li key={member.user_id} className="text-sm text-[#3A2A1F]">
                       {member.name || "Member"}
@@ -195,6 +199,7 @@ export default function GroupsPage() {
 
                 {isOwner && <InviteLinkPanel familyId={family.id} />}
               </div>
+              </>
             );
           })()
         )}

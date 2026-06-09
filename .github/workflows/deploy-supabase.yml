@@ -8,6 +8,9 @@ on:
       - 'supabase/**'
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   changes:
     name: Detect changed paths
@@ -29,7 +32,7 @@ jobs:
   migrate:
     name: Run Supabase Migrations
     needs: changes
-    if: needs.changes.outputs.migrations == 'true'
+    if: needs.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: Production
     steps:
@@ -49,7 +52,7 @@ jobs:
   deploy-functions:
     name: Deploy Edge Functions
     needs: changes
-    if: needs.changes.outputs.functions == 'true'
+    if: needs.changes.outputs.functions == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: Production
     steps:

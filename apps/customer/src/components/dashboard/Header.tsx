@@ -53,43 +53,46 @@ export function Header({ user, onAvatarClick, onInviteFriends, onManageGroups, o
           </div>
           <button
             role="menuitem"
-            className="w-full text-left px-4 py-3 text-sm text-[#3A2A1F] hover:bg-[#F5EDE6] transition-colors"
+            className="w-full text-left px-4 py-3 hover:bg-[#F5EDE6] transition-colors"
             onClick={() => {
               setMenuOpen(false);
               onAvatarClick?.();
             }}
           >
-            Profile
+            <p className="text-sm text-[#3A2A1F]">Profile</p>
+            <p className="text-xs text-[#9E8B7E]">Update your name & preferences</p>
           </button>
           <button
             role="menuitem"
-            className="w-full text-left px-4 py-3 text-sm text-[#3A2A1F] hover:bg-[#F5EDE6] transition-colors"
+            className="w-full text-left px-4 py-3 hover:bg-[#F5EDE6] transition-colors"
             onClick={() => {
               setMenuOpen(false);
               onInviteFriends?.();
             }}
           >
-            Manage friends
+            <p className="text-sm text-[#3A2A1F]">Friends</p>
+            <p className="text-xs text-[#9E8B7E]">See friends and swap recipe ideas</p>
           </button>
           <button
             role="menuitem"
-            className="w-full text-left px-4 py-3 text-sm text-[#3A2A1F] hover:bg-[#F5EDE6] transition-colors"
+            className="w-full text-left px-4 py-3 hover:bg-[#F5EDE6] transition-colors"
             onClick={() => {
               setMenuOpen(false);
               onManageGroups?.();
             }}
           >
-            Manage family
+            <p className="text-sm text-[#3A2A1F]">Family</p>
+            <p className="text-xs text-[#9E8B7E]">Plan meals together as one team</p>
           </button>
           <button
             role="menuitem"
-            className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-[#F5EDE6] transition-colors"
+            className="w-full text-left px-4 py-3 hover:bg-[#F5EDE6] transition-colors"
             onClick={() => {
               setMenuOpen(false);
               onSignOut?.();
             }}
           >
-            Sign out
+            <p className="text-sm text-red-500">Sign out</p>
           </button>
         </div>
       )}
