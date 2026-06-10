@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { ArrowLeft, Check, ChevronRight, Loader2, Sparkles } from "lucide-react";
+import { toast } from "@/lib/toast";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -157,15 +158,6 @@ function OnboardingHero({
         </div>
       </section>
     </>
-  );
-}
-
-function ErrorNotice({ error }: { error: string | null }) {
-  if (!error) return null;
-  return (
-    <div className="mt-4 rounded-[24px] border border-[#E4B9A3] bg-[#FFF1EB] px-4 py-3 text-sm text-[#9A4B1E]">
-      {error}
-    </div>
   );
 }
 
@@ -622,7 +614,6 @@ export function MealPlanOnboarding({ userId, onCancel, onFinish, targetWeek, tar
 
   const [recipes, setRecipes] = useState<OnboardingRecipe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedRequirements, setSelectedRequirements] = useState<string[]>([]);
   // Re-plans already have saved dietary preferences (set during first-time onboarding)
   // and shouldn't make the user pick them again every time they replan a week.
@@ -648,12 +639,10 @@ export function MealPlanOnboarding({ userId, onCancel, onFinish, targetWeek, tar
     const load = async () => {
       try {
         setLoading(true);
-        setError(null);
         const nextRecipes = await fetchOnboardingRecipes();
         if (isMounted) setRecipes(nextRecipes);
       } catch (loadError) {
-        if (isMounted)
-          setError(loadError instanceof Error ? loadError.message : "We couldn't load recipes yet.");
+        if (isMounted) toast.error(loadError instanceof Error ? loadError.message : "We couldn't load recipes yet.");
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -714,11 +703,10 @@ export function MealPlanOnboarding({ userId, onCancel, onFinish, targetWeek, tar
 
   const handleBuildWeek = async () => {
     if (selectedRecipeIds.length === 0) {
-      setError("Pick at least one recipe so we can build the rest of your week around it.");
+      toast.error("Pick at least one recipe so we can build the rest of your week around it.");
       return;
     }
     setIsSaving(true);
-    setError(null);
     try {
       const selectedRecipes = selectedRecipeIds
         .map((id) => recipes.find((r) => r.id === id) ?? null)
@@ -740,7 +728,7 @@ export function MealPlanOnboarding({ userId, onCancel, onFinish, targetWeek, tar
       globalThis.localStorage.removeItem(`numnums:onboarding:step:${userId}`);
       setStep("ready");
     } catch (buildError) {
-      setError(buildError instanceof Error ? buildError.message : "We couldn't build your week yet.");
+      toast.error(buildError instanceof Error ? buildError.message : "We couldn't build your week yet.");
     } finally {
       setIsSaving(false);
     }
@@ -755,7 +743,6 @@ export function MealPlanOnboarding({ userId, onCancel, onFinish, targetWeek, tar
         isCurrentWeek={isCurrentWeek}
         onCancel={onCancel}
       />
-      <ErrorNotice error={error} />
       {loading ? (
         <LoadingPanel />
       ) : (
