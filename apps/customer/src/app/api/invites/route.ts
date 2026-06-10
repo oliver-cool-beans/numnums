@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       kind === "family"
         ? loopsConfig.transactional.familyInvite
         : loopsConfig.transactional.friendInvite;
-    const dataVariables =
+    const dataVariables: Record<string, string> =
       kind === "family"
         ? { inviterName, inviteLink: url.toString() }
         : { friendName: inviterName, inviteLink: url.toString() };
