@@ -164,6 +164,39 @@ export default function RecipePage() {
       return next;
     });
   };
+  // Keep screen awake while cooking; release immediately on navigation away
+  useEffect(() => {
+    if (!("wakeLock" in navigator)) return;
+    let active = true;
+    let sentinel: WakeLockSentinel | null = null;
+
+    const acquire = async () => {
+      try {
+        const lock = await (navigator as Navigator & { wakeLock: { request: (type: string) => Promise<WakeLockSentinel> } }).wakeLock.request("screen");
+        if (!active) {
+          // component already unmounted while we were awaiting — release immediately
+          lock.release();
+        } else {
+          sentinel = lock;
+        }
+      } catch {
+        // unsupported or permission denied — silently ignore
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") acquire();
+    };
+
+    acquire();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      sentinel?.release();
+    };
+  }, []);
+
   const progressSentRef = useRef(false);
 
   // Mark in_progress when the recipe is first opened

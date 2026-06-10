@@ -161,6 +161,20 @@
     "unit": "g"
   },
   {
+    "ingredient_handle": "coconut-milk",
+    "source_quantity": 1,
+    "source_unit": "tin",
+    "quantity": 400,
+    "unit": "ml"
+  },
+  {
+    "ingredient_handle": "asian-greens",
+    "source_quantity": 1,
+    "source_unit": "bunch",
+    "quantity": 150,
+    "unit": "g"
+  },
+  {
     "ingredient_handle": "olive-oil",
     "source_quantity": 1,
     "source_unit": "drizzle",

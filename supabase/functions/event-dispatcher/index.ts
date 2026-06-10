@@ -65,8 +65,8 @@ Deno.serve(async (req) => {
     const key = `${payload.table}:${payload.type}`;
     const tasks = [dispatchToLoops(payload)];
 
-    const pushHandler = PUSH_HANDLERS[key];
-    if (pushHandler) tasks.push(pushHandler(payload.record));
+    // const pushHandler = PUSH_HANDLERS[key];
+    // if (pushHandler) tasks.push(pushHandler(payload.record));
 
     // Ack the webhook immediately — Postgres holds the trigger open until we
     // respond, and nothing in `tasks` (Loops/push HTTP calls) needs to
