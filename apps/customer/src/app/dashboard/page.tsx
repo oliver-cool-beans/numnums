@@ -11,6 +11,7 @@ import {
   useShoppingList,
   useFriendsToday,
   useRecipeSwap,
+  useFamilyContext,
 } from "@/lib/hooks";
 import {
   Header,
@@ -155,7 +156,7 @@ function FullScreenOverlay({ children }: { children: React.ReactNode }) {
 function DashboardInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<"week" | "list" | "favorites" | "profile">("week");
+  const [activeTab, setActiveTab] = useState<"week" | "list" | "profile">("week");
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [dayMenuTarget, setDayMenuTarget] = useState<DayMenuTarget | null>(null);
   const [notificationPrompt, setNotificationPrompt] = useState<NotificationPromptCopy | null>(() =>
@@ -191,20 +192,26 @@ function DashboardInner() {
     refetchWeekPreview();
   });
 
-  const getTomorrowRecipeName = (): string | null => {
+  const familyContext = useFamilyContext(user?.id);
+
+  const getTomorrowRecipe = (): { name: string; id: string } | null => {
     if (!mealPlan) return null;
     const dayOfWeek = getDayOfWeek();
     const tomorrowIndex = dayOfWeek === 0 ? 0 : dayOfWeek;
     if (tomorrowIndex >= 0 && tomorrowIndex < mealPlan.days.length) {
-      return mealPlan.days[tomorrowIndex].recipe?.name || null;
+      const recipe = mealPlan.days[tomorrowIndex].recipe;
+      if (recipe?.name && recipe?.id) return { name: recipe.name, id: recipe.id };
     }
     return null;
   };
 
   const listIsFinalized = shoppingList?.status === "confirmed" || shoppingList?.status === "completed";
-  const showSwapCard = !listIsFinalized && shoppingList?.status !== "completed";
+  const showSwapCard =
+    !listIsFinalized &&
+    Boolean(todayRecipe) &&
+    todayRecipe?.progress.status !== "completed";
 
-  const handleTabChange = (tab: "week" | "list" | "favorites" | "profile") => {
+  const handleTabChange = (tab: "week" | "list" | "profile") => {
     setActiveTab(tab);
     if (tab === "list") router.push("/dashboard/shopping-list");
     if (tab === "profile") router.push("/dashboard/profile");
@@ -242,6 +249,15 @@ function DashboardInner() {
     setDayMenuTarget(null);
   };
 
+  const handleSwapFromCard = () => {
+    const dayOfWeek = getDayOfWeek();
+    const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const todayEntry = mealPlan?.days[dayIndex];
+    if (!todayEntry?.recipe) return;
+    const { week, year } = getCurrentWeek();
+    recipeSwap.open({ day: todayEntry.day, week, year, currentRecipeId: todayEntry.recipe.id });
+  };
+
   useEffect(() => {
     if (!userLoading && !user) router.replace("/");
   }, [user, userLoading, router]);
@@ -260,12 +276,13 @@ function DashboardInner() {
   if (shouldShowOnboarding) {
     return (
       <div className="min-h-dvh w-full bg-white md:flex md:h-dvh md:overflow-hidden md:bg-[#FAF6F2]">
-        <SideNav activeTab={activeTab} onTabChange={handleTabChange} user={user} onSignOut={signOut} />
+        <SideNav activeTab={activeTab} onTabChange={handleTabChange} onInviteFriends={() => router.push("/dashboard/friends")} onManageGroups={() => router.push("/dashboard/groups")} user={user} onSignOut={signOut} />
         <div className="flex flex-1 flex-col md:items-center md:justify-center md:overflow-y-auto md:p-6">
           <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col overflow-hidden bg-white md:min-h-0 md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)]">
             <MealPlanOnboarding
               userId={user.id}
               onCancel={() => router.replace("/dashboard?skipOnboarding=1")}
+              onFinish={() => router.push("/dashboard/shopping-list")}
             />
           </main>
         </div>
@@ -285,7 +302,7 @@ function DashboardInner() {
     );
   }
 
-  const tomorrowRecipeName = getTomorrowRecipeName();
+  const tomorrowRecipe = getTomorrowRecipe();
   // The card has two very different final shapes ("today's recipe" hero vs.
   // "build my week" empty state). Once the meal plan resolves we know which one
   // we're heading toward, so pick the matching skeleton to avoid a layout jump —
@@ -299,7 +316,7 @@ function DashboardInner() {
 
   return (
     <div className="min-h-dvh w-full bg-white md:flex md:h-dvh md:overflow-hidden">
-      <SideNav activeTab={activeTab} onTabChange={handleTabChange} user={user} onSignOut={signOut} />
+      <SideNav activeTab={activeTab} onTabChange={handleTabChange} onInviteFriends={() => router.push("/dashboard/friends")} onManageGroups={() => router.push("/dashboard/groups")} user={user} onSignOut={signOut} />
 
       {/* ── Mobile layout (hidden on md+) ── */}
       <div className="flex h-dvh flex-col md:hidden">
@@ -314,6 +331,17 @@ function DashboardInner() {
               onSignOut={signOut}
             />
             <GreetingBlock userName={user.name} />
+            {familyContext && (
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/groups")}
+                className="mx-5 mb-3 flex items-center gap-2 rounded-full bg-[#E7F6DF] px-3 py-1.5 text-xs font-medium text-[#558B2F] transition-colors hover:bg-[#D5ECC8]"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-[#7CB342]" />
+                {familyContext.familyName}
+                {familyContext.isOwner ? " · Planner" : " · Member"}
+              </button>
+            )}
             {notificationPrompt && user?.id && (
               <EnableNotificationsPrompt
                 userId={user.id}
@@ -332,6 +360,7 @@ function DashboardInner() {
                 isLoading={currentRecipeLoading}
                 loadingKind={currentRecipeLoadingKind}
               />
+              <SwapCard isVisible={showSwapCard} recipeName={todayRecipe?.name} onSwap={handleSwapFromCard} />
               {weekPreview.length > 0 && (
                 <WeekPreviewCards
                   days={weekPreview}
@@ -342,28 +371,28 @@ function DashboardInner() {
                   isLoading={weekPreviewLoading}
                 />
               )}
-              {(friendsToday === null || friendsToday.length > 0) && (
-                <FriendsTodayBlock
-                  friendsToday={friendsToday || []}
-                  onRecipeClick={(recipeId) => router.push(`/dashboard/recipes/${recipeId}`)}
-                  isLoading={friendsTodayLoading}
-                />
-              )}
               <ShoppingListCard
                 list={shoppingList || null}
+                hasMealPlan={Boolean(mealPlan)}
                 onViewList={() => router.push("/dashboard/shopping-list")}
                 onReviewList={() => router.push("/dashboard/shopping-list")}
-                onDoLater={() => {}}
                 isLoading={listLoading}
               />
-              {todayRecipe?.progress.status === "completed" && (
-                <NextUpCard nextRecipeName={tomorrowRecipeName} onViewNext={() => {}} />
-              )}
-              <SwapCard isVisible={showSwapCard} onSwap={() => {}} />
               <PlanAheadCard
                 onOpenModal={() => setShowPlanModal(true)}
                 onShopNextWeek={handleShopNextWeek}
               />
+              <FriendsTodayBlock
+                friendsToday={friendsToday || []}
+                onInviteFriends={() => router.push("/dashboard/friends")}
+                isLoading={friendsTodayLoading}
+              />
+              {todayRecipe?.progress.status === "completed" && (
+                <NextUpCard
+                  nextRecipeName={tomorrowRecipe?.name ?? null}
+                  onViewNext={() => tomorrowRecipe && router.push(`/dashboard/recipes/${tomorrowRecipe.id}`)}
+                />
+              )}
             </div>
           </div>
           <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
@@ -382,6 +411,17 @@ function DashboardInner() {
                 {user.name ? `Hey, ${user.name.split(" ")[0]} 👋` : "Hey there 👋"}
               </h1>
               <p className="mt-1 text-base text-[#6F5B4B]">Here&apos;s what&apos;s next.</p>
+              {familyContext && (
+                <button
+                  type="button"
+                  onClick={() => router.push("/dashboard/groups")}
+                  className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#E7F6DF] px-3 py-1.5 text-xs font-medium text-[#558B2F] transition-colors hover:bg-[#D5ECC8]"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#7CB342]" />
+                  {familyContext.familyName}
+                  {familyContext.isOwner ? " · Planner" : " · Member"}
+                </button>
+              )}
             </div>
             <div className="greeting-pot relative h-[160px] w-[144px] shrink-0">
               <Image src="/pot-angle.png" alt="" fill className="object-contain object-center" sizes="144px" />
@@ -410,6 +450,13 @@ function DashboardInner() {
               loadingKind={currentRecipeLoadingKind}
             />
 
+            <SwapCard
+              className="flex items-center justify-between rounded-[20px] bg-white p-4 shadow-[0_2px_12px_rgba(58,42,31,0.06)]"
+              isVisible={showSwapCard}
+              recipeName={todayRecipe?.name}
+              onSwap={handleSwapFromCard}
+            />
+
             {weekPreview.length > 0 && (
               <div className="rounded-[24px] bg-white p-5 shadow-[0_2px_12px_rgba(58,42,31,0.06)]">
                 <WeekPreviewCards
@@ -425,39 +472,13 @@ function DashboardInner() {
               </div>
             )}
 
-            {(friendsToday === null || friendsToday.length > 0) && (
-              <div className="rounded-[24px] bg-white p-5 shadow-[0_2px_12px_rgba(58,42,31,0.06)]">
-                <FriendsTodayBlock
-                  className="space-y-4"
-                  flat
-                  friendsToday={friendsToday || []}
-                  onRecipeClick={(recipeId) => router.push(`/dashboard/recipes/${recipeId}`)}
-                  isLoading={friendsTodayLoading}
-                />
-              </div>
-            )}
-
             <ShoppingListCard
               className=""
               list={shoppingList || null}
+              hasMealPlan={Boolean(mealPlan)}
               onViewList={() => router.push("/dashboard/shopping-list")}
               onReviewList={() => router.push("/dashboard/shopping-list")}
-              onDoLater={() => {}}
               isLoading={listLoading}
-            />
-
-            {todayRecipe?.progress.status === "completed" && (
-              <NextUpCard
-                className="flex items-center justify-between rounded-[20px] bg-white p-4 shadow-[0_2px_12px_rgba(58,42,31,0.06)]"
-                nextRecipeName={tomorrowRecipeName}
-                onViewNext={() => {}}
-              />
-            )}
-
-            <SwapCard
-              className="flex items-center justify-between rounded-[20px] bg-white p-4 shadow-[0_2px_12px_rgba(58,42,31,0.06)]"
-              isVisible={showSwapCard}
-              onSwap={() => {}}
             />
 
             <PlanAheadCard
@@ -465,6 +486,24 @@ function DashboardInner() {
               onOpenModal={() => setShowPlanModal(true)}
               onShopNextWeek={handleShopNextWeek}
             />
+
+            <div className="rounded-[24px] bg-white p-5 shadow-[0_2px_12px_rgba(58,42,31,0.06)]">
+              <FriendsTodayBlock
+                className="space-y-4"
+                flat
+                friendsToday={friendsToday || []}
+                onInviteFriends={() => router.push("/dashboard/friends")}
+                isLoading={friendsTodayLoading}
+              />
+            </div>
+
+            {todayRecipe?.progress.status === "completed" && (
+              <NextUpCard
+                className="flex items-center justify-between rounded-[20px] bg-white p-4 shadow-[0_2px_12px_rgba(58,42,31,0.06)]"
+                nextRecipeName={tomorrowRecipe?.name ?? null}
+                onViewNext={() => tomorrowRecipe && router.push(`/dashboard/recipes/${tomorrowRecipe.id}`)}
+              />
+            )}
           </div>
         </div>
         </div>

@@ -11,7 +11,13 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SECRET_KEY!,
     );
 
-    await supabase.auth.exchangeCodeForSession(code);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      const url = new URL("/auth/complete", request.url);
+      url.searchParams.set("error", "session_exchange_failed");
+      url.searchParams.set("error_description", error.message);
+      return NextResponse.redirect(url);
+    }
   }
 
   // URL to redirect to after sign in process completes

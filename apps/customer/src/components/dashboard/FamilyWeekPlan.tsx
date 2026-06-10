@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { Loader2, Shuffle, ThumbsDown, ThumbsUp } from "lucide-react";
+import { toast } from "@/lib/toast";
 
 import { cn, getWeekAtOffset } from "@/lib/utils";
 import type { Weekday, OnboardingRecipe } from "@/lib/recipeSchedule";
@@ -22,6 +23,7 @@ import { RecipeSwapPicker } from "@/components/dashboard/RecipeSwapPicker";
 type FamilyWeekPlanProps = {
   familyId: string;
   ownerId: string;
+  ownerName?: string | null;
   currentUserId: string;
   isOwner: boolean;
   week: number;
@@ -36,12 +38,106 @@ type PickerState = {
 
 type PendingState = { day: Weekday; action: "select" | "approve" | "dismiss" } | null;
 
-export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner, week, year }: FamilyWeekPlanProps) {
+function SuggestionPanel({
+  suggestion,
+  isOwner,
+  isPending,
+  pendingAction,
+  onApprove,
+  onDismiss,
+}: {
+  suggestion: SwapSuggestion;
+  isOwner: boolean;
+  isPending: boolean;
+  pendingAction: PendingState["action"] | undefined;
+  onApprove: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="mt-2.5 rounded-[14px] bg-[#FFF7E8] px-3 py-2.5">
+      <p className="text-xs leading-5 text-[#6F5B4B]">
+        <span className="font-semibold text-[#3A2A1F]">{suggestion.suggestedByName ?? "Someone"}</span>{" "}
+        suggested swapping in{" "}
+        <span className="font-semibold text-[#3A2A1F]">{suggestion.proposedRecipe.name}</span>
+      </p>
+      {isOwner ? (
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            onClick={onApprove}
+            disabled={isPending}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#7CB342] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#689F38] disabled:opacity-50"
+          >
+            {isPending && pendingAction === "approve" ? <Loader2 className="size-3.5 animate-spin" /> : <ThumbsUp className="size-3.5" />}
+            Approve
+          </button>
+          <button
+            type="button"
+            onClick={onDismiss}
+            disabled={isPending}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#D9CCBB] bg-white px-3 py-1.5 text-xs font-semibold text-[#3A2A1F] transition-colors hover:bg-[#F5EDE0] disabled:opacity-50"
+          >
+            {isPending && pendingAction === "dismiss" ? <Loader2 className="size-3.5 animate-spin" /> : <ThumbsDown className="size-3.5" />}
+            Dismiss
+          </button>
+        </div>
+      ) : (
+        <p className="mt-1.5 text-[0.68rem] font-medium uppercase tracking-wide text-[#B08D52]">
+          Pending owner review
+        </p>
+      )}
+    </div>
+  );
+}
+
+function DayActions({
+  entry,
+  isOwner,
+  isPending,
+  pendingAction,
+  onSuggest,
+  onSwitch,
+}: {
+  entry: { day: Weekday; recipe: { id: string } | null | undefined };
+  isOwner: boolean;
+  isPending: boolean;
+  pendingAction: PendingState["action"] | undefined;
+  onSuggest: () => void;
+  onSwitch: () => void;
+}) {
+  return (
+    <div className="mt-2.5 flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={onSuggest}
+        disabled={isPending}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border border-[#D9CCBB] bg-white px-3 py-1.5 text-xs font-semibold text-[#3A2A1F] transition-colors hover:bg-[#F5EDE0]",
+          isPending && "opacity-50",
+        )}
+      >
+        {isPending && pendingAction === "select" ? <Loader2 className="size-3.5 animate-spin" /> : <Shuffle className="size-3.5" />}
+        {entry.recipe ? "Suggest a swap" : "Suggest a recipe"}
+      </button>
+      {isOwner && (
+        <button
+          type="button"
+          onClick={onSwitch}
+          disabled={isPending}
+          className="inline-flex items-center gap-1.5 rounded-full bg-[#3A2A1F] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#5C4A3A] disabled:opacity-50"
+        >
+          Switch
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function FamilyWeekPlan({ familyId, ownerId, ownerName, currentUserId, isOwner, week, year }: FamilyWeekPlanProps) {
   const [plan, setPlan] = useState<FamilyWeekPlanData | null>(null);
   const [suggestions, setSuggestions] = useState<SwapSuggestion[]>([]);
   const [recentRecipeIds, setRecentRecipeIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [pending, setPending] = useState<PendingState>(null);
 
@@ -62,11 +158,10 @@ export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner, week
     void (async () => {
       if (!isMounted) return;
       setLoading(true);
-      setError(null);
       try {
         await load();
       } catch (loadError) {
-        if (isMounted) setError(loadError instanceof Error ? loadError.message : "We couldn't load this week's plan.");
+        if (isMounted) toast.error(loadError instanceof Error ? loadError.message : "We couldn't load this week's plan.");
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -78,7 +173,7 @@ export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner, week
     try {
       await load();
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : "We couldn't refresh this week's plan.");
+      toast.error(refreshError instanceof Error ? refreshError.message : "We couldn't refresh this week's plan.");
     }
   };
 
@@ -89,7 +184,6 @@ export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner, week
     const { day, mode, currentRecipeId } = picker;
     setPicker(null);
     setPending({ day, action: "select" });
-    setError(null);
 
     try {
       if (mode === "switch") {
@@ -108,7 +202,7 @@ export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner, week
       }
       await refresh();
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "That didn't go through. Please try again.");
+      toast.error(actionError instanceof Error ? actionError.message : "That didn't go through. Please try again.");
     } finally {
       setPending(null);
     }
@@ -116,12 +210,11 @@ export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner, week
 
   const handleApprove = async (suggestion: SwapSuggestion) => {
     setPending({ day: suggestion.day, action: "approve" });
-    setError(null);
     try {
-      await approveRecipeSwapSuggestion(suggestion.id);
+      await approveRecipeSwapSuggestion(suggestion.id, ownerId, week, year);
       await refresh();
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Couldn't approve that suggestion.");
+      toast.error(actionError instanceof Error ? actionError.message : "Couldn't approve that suggestion.");
     } finally {
       setPending(null);
     }
@@ -129,12 +222,11 @@ export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner, week
 
   const handleDismiss = async (suggestion: SwapSuggestion) => {
     setPending({ day: suggestion.day, action: "dismiss" });
-    setError(null);
     try {
       await dismissRecipeSwapSuggestion(suggestion.id);
       await refresh();
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Couldn't dismiss that suggestion.");
+      toast.error(actionError instanceof Error ? actionError.message : "Couldn't dismiss that suggestion.");
     } finally {
       setPending(null);
     }
@@ -164,15 +256,9 @@ export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner, week
     <div className="mt-2">
       <p className="px-1 text-xs text-[#6F5B4B]">
         {isOwner
-          ? "Approve suggestions, switch a recipe directly, or suggest your own swap."
-          : "Suggest a swap — the family owner will review it."}
+          ? "You manage this plan. Approve suggestions from family members, or switch a recipe directly."
+          : `You can suggest swaps — ${ownerName ?? "the plan owner"} will review and approve them.`}
       </p>
-
-      {error && (
-        <div className="mt-3 rounded-[16px] border border-[#E4B9A3] bg-[#FFF1EB] px-4 py-3 text-sm text-[#9A4B1E]">
-          {error}
-        </div>
-      )}
 
       <ul className="mt-3 space-y-2">
         {plan.days.map((entry) => {
@@ -197,80 +283,23 @@ export function FamilyWeekPlan({ familyId, ownerId, currentUserId, isOwner, week
               </div>
 
               {suggestion ? (
-                <div className="mt-2.5 rounded-[14px] bg-[#FFF7E8] px-3 py-2.5">
-                  <p className="text-xs leading-5 text-[#6F5B4B]">
-                    <span className="font-semibold text-[#3A2A1F]">{suggestion.suggestedByName ?? "Someone"}</span>{" "}
-                    suggested swapping in{" "}
-                    <span className="font-semibold text-[#3A2A1F]">{suggestion.proposedRecipe.name}</span>
-                  </p>
-                  {isOwner ? (
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void handleApprove(suggestion)}
-                        disabled={isPending}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-[#7CB342] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#689F38] disabled:opacity-50"
-                      >
-                        {isPending && pending?.action === "approve" ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                          <ThumbsUp className="size-3.5" />
-                        )}
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDismiss(suggestion)}
-                        disabled={isPending}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-[#D9CCBB] bg-white px-3 py-1.5 text-xs font-semibold text-[#3A2A1F] transition-colors hover:bg-[#F5EDE0] disabled:opacity-50"
-                      >
-                        {isPending && pending?.action === "dismiss" ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                          <ThumbsDown className="size-3.5" />
-                        )}
-                        Dismiss
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="mt-1.5 text-[0.68rem] font-medium uppercase tracking-wide text-[#B08D52]">
-                      Pending owner review
-                    </p>
-                  )}
-                </div>
+                <SuggestionPanel
+                  suggestion={suggestion}
+                  isOwner={isOwner}
+                  isPending={isPending}
+                  pendingAction={pending?.action}
+                  onApprove={() => void handleApprove(suggestion)}
+                  onDismiss={() => void handleDismiss(suggestion)}
+                />
               ) : (
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPicker({ day: entry.day, mode: "suggest", currentRecipeId: entry.recipe?.id ?? null })
-                    }
-                    disabled={isPending}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border border-[#D9CCBB] bg-white px-3 py-1.5 text-xs font-semibold text-[#3A2A1F] transition-colors hover:bg-[#F5EDE0]",
-                      isPending && "opacity-50",
-                    )}
-                  >
-                    {isPending && pending?.action === "select" ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <Shuffle className="size-3.5" />
-                    )}
-                    Suggest a swap
-                  </button>
-                  {isOwner && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPicker({ day: entry.day, mode: "switch", currentRecipeId: entry.recipe?.id ?? null })
-                      }
-                      disabled={isPending}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-[#3A2A1F] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#5C4A3A] disabled:opacity-50"
-                    >
-                      Switch
-                    </button>
-                  )}
-                </div>
+                <DayActions
+                  entry={entry}
+                  isOwner={isOwner}
+                  isPending={isPending}
+                  pendingAction={pending?.action}
+                  onSuggest={() => setPicker({ day: entry.day, mode: "suggest", currentRecipeId: entry.recipe?.id ?? null })}
+                  onSwitch={() => setPicker({ day: entry.day, mode: "switch", currentRecipeId: entry.recipe?.id ?? null })}
+                />
               )}
             </li>
           );

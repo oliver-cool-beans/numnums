@@ -6,9 +6,12 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase-client";
 import { createFamilyInvite } from "@/lib/inviteActions";
+import { toast } from "@/lib/toast";
 import { maybeQueueFamilyCreatedPrompt, maybeQueueFamilyInviteSentPrompt } from "@/lib/notificationPrompts";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { SubPageShell } from "@/components/dashboard/SubPageShell";
 import { InviteBlock } from "@/components/dashboard/InviteBlock";
+import { usePendingInvites, type PendingInvite } from "@/lib/hooks/usePendingInvites";
 
 type Member = { user_id: string; role: "owner" | "member"; name: string | null };
 type Family = { id: string; name: string; members: Member[] };
@@ -71,7 +74,7 @@ function useFamilies(userId: string | undefined) {
   return { families, reload };
 }
 
-function InviteLinkPanel({ familyId }: { familyId: string }) {
+function InviteLinkPanel({ familyId, onAfterSent }: { familyId: string; onAfterSent?: () => void }) {
   const { user } = useAuth();
 
   return (
@@ -82,7 +85,7 @@ function InviteLinkPanel({ familyId }: { familyId: string }) {
         familyId={familyId}
         label="Invite a family member by"
         createInvite={(email) => createFamilyInvite(familyId, email)}
-        onSent={maybeQueueFamilyInviteSentPrompt}
+        onSent={async (uid) => { await maybeQueueFamilyInviteSentPrompt(uid); onAfterSent?.(); }}
       />
     </div>
   );
@@ -92,19 +95,17 @@ function CreateFamilyPanel({ onCreated }: { onCreated: () => void }) {
   const { user } = useAuth();
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function handleCreate() {
     const trimmed = name.trim();
     if (!trimmed) return;
 
     setCreating(true);
-    setError(null);
 
     const { error: createError } = await supabase.rpc("create_family", { family_name: trimmed });
 
     if (createError) {
-      setError(createError.message || "Could not create the family");
+      toast.error(createError.message || "Could not create the family");
       setCreating(false);
       return;
     }
@@ -136,7 +137,84 @@ function CreateFamilyPanel({ onCreated }: { onCreated: () => void }) {
           {creating ? "Creating..." : "Create"}
         </button>
       </div>
-      {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+    </div>
+  );
+}
+
+function FamilyContent({
+  families,
+  userId,
+  reload,
+}: {
+  families: Family[] | null;
+  userId: string | undefined;
+  reload: () => void;
+}) {
+  const family = families?.[0];
+  const isOwner = family?.members.some((m) => m.user_id === userId && m.role === "owner") ?? false;
+  const { invites: pendingInvites, revoke: revokePendingInvite, reload: reloadInvites } = usePendingInvites(
+    isOwner ? userId : undefined,
+    "family",
+    family?.id,
+  );
+
+  if (families === null) {
+    return <p className="px-1 text-sm text-[#9E8B7E]">Loading...</p>;
+  }
+
+  if (families.length === 0) {
+    return (
+      <>
+        <p className="px-1 text-sm text-[#9E8B7E]">You&apos;re not part of a family yet.</p>
+        <div className="mt-4">
+          <CreateFamilyPanel onCreated={reload} />
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <h2 className="mb-3 px-1 text-base font-semibold text-[#3A2A1F]">{family!.name}</h2>
+      <div className="rounded-xl border border-[#F0E8DE] p-4">
+        <ul className="divide-y divide-[#F0E8DE]">
+          {family!.members.map((member) => (
+            <li key={member.user_id} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+              <span className="text-sm text-[#3A2A1F]">{member.name || "Member"}</span>
+              {member.role === "owner" && (
+                <span className="rounded-full bg-[#E7F6DF] px-2 py-0.5 text-[0.68rem] font-semibold text-[#558B2F]">
+                  Planner
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+        {isOwner && <InviteLinkPanel familyId={family!.id} onAfterSent={reloadInvites} />}
+      </div>
+      {isOwner && <FamilyPendingInvites invites={pendingInvites} revoke={revokePendingInvite} />}
+    </>
+  );
+}
+
+function FamilyPendingInvites({ invites, revoke }: { invites: PendingInvite[] | null; revoke: (id: string) => Promise<boolean> }) {
+  if (!invites?.length) return null;
+  return (
+    <div className="mt-4">
+      <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-[#9E8B7E]">Pending invites</p>
+      <ul className="divide-y divide-[#F0E8DE] rounded-xl border border-[#F0E8DE]">
+        {invites.map((inv) => (
+          <li key={inv.id} className="flex items-center justify-between px-4 py-3">
+            <span className="text-sm text-[#3A2A1F]">{inv.invitee_email ?? "Invite link"}</span>
+            <button
+              type="button"
+              onClick={() => void revoke(inv.id)}
+              className="text-xs text-[#9E8B7E] underline underline-offset-2 transition-colors hover:text-[#E85D5D]"
+            >
+              Revoke
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -151,59 +229,30 @@ export default function GroupsPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-0 md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
-      <header className="flex items-center gap-3 px-5 pb-3 pt-14">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm transition-colors hover:bg-[#F5EDE0]"
-          aria-label="Go back"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-semibold text-[#3A2A1F]">Family</h1>
+    <SubPageShell>
+      <main className="mx-auto flex h-full w-full max-w-[390px] flex-col bg-white md:h-auto md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
+        <header className="flex items-center gap-3 px-5 pb-3 pt-14">
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm transition-colors hover:bg-[#F5EDE0]"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-semibold text-[#3A2A1F]">Family</h1>
+          </div>
+        </header>
+
+        <div className="mx-5 mb-2 rounded-xl bg-[#F5EDE6] px-3 py-2 text-xs text-[#8A6F5C]">
+          The planner builds the week — everyone else can suggest swaps for review.
         </div>
-      </header>
 
-      <div className="mx-5 mb-2 rounded-xl bg-[#F5EDE6] px-3 py-2 text-xs text-[#8A6F5C]">
-        One plan, shared by the whole family — everyone plans together.
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-5 pb-10">
-        {families === null ? (
-          <p className="px-1 text-sm text-[#9E8B7E]">Loading...</p>
-        ) : families.length === 0 ? (
-          <>
-            <p className="px-1 text-sm text-[#9E8B7E]">You&apos;re not part of a family yet.</p>
-            <div className="mt-4">
-              <CreateFamilyPanel onCreated={reload} />
-            </div>
-          </>
-        ) : (
-          (() => {
-            const family = families[0];
-            const isOwner = family.members.some((m) => m.user_id === user?.id && m.role === "owner");
-
-            return (
-              <>
-                <h2 className="mb-3 px-1 text-base font-semibold text-[#3A2A1F]">{family.name}</h2>
-                <div className="rounded-xl border border-[#F0E8DE] p-4">
-                <ul className="space-y-1">
-                  {family.members.map((member) => (
-                    <li key={member.user_id} className="text-sm text-[#3A2A1F]">
-                      {member.name || "Member"}
-                    </li>
-                  ))}
-                </ul>
-
-                {isOwner && <InviteLinkPanel familyId={family.id} />}
-              </div>
-              </>
-            );
-          })()
-        )}
-      </div>
-    </main>
+        <div className="flex-1 overflow-y-auto px-5 pb-10">
+          <FamilyContent families={families} userId={user?.id} reload={reload} />
+        </div>
+      </main>
+    </SubPageShell>
   );
 }

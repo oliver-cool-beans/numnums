@@ -135,36 +135,61 @@ export function useShoppingListFull(userId: string | undefined, weekFilter?: Wee
         ? { ...prev, items: prev.items.map((i) => (i.id === itemId ? { ...i, is_checked: checked } : i)) }
         : prev,
     );
-    await supabase.from("shopping_list_items").update({ is_checked: checked }).eq("id", itemId);
+    const { error } = await supabase.from("shopping_list_items").update({ is_checked: checked }).eq("id", itemId);
+    if (error) {
+      setList((prev) =>
+        prev
+          ? { ...prev, items: prev.items.map((i) => (i.id === itemId ? { ...i, is_checked: !checked } : i)) }
+          : prev,
+      );
+    }
   }, []);
 
   const completeList = useCallback(async (listId: string) => {
     setList((prev) => (prev ? { ...prev, status: "completed" } : prev));
-    await supabase
+    const { error } = await supabase
       .from("shopping_lists")
       .update({ status: "completed", completed_at: new Date().toISOString() })
       .eq("id", listId);
+    if (error) {
+      setList((prev) => (prev ? { ...prev, status: "confirmed" } : prev));
+    }
   }, []);
 
   const uncompleteList = useCallback(async (listId: string) => {
     setList((prev) => (prev ? { ...prev, status: "confirmed" } : prev));
-    await supabase
+    const { error } = await supabase
       .from("shopping_lists")
       .update({ status: "confirmed", completed_at: null })
       .eq("id", listId);
+    if (error) {
+      setList((prev) => (prev ? { ...prev, status: "completed" } : prev));
+    }
   }, []);
 
   const quickComplete = useCallback(async (listId: string) => {
-    setList((prev) =>
-      prev
+    let snapshot: FullShoppingList | null = null;
+    setList((prev) => {
+      snapshot = prev;
+      return prev
         ? { ...prev, status: "completed", items: prev.items.map((i) => ({ ...i, is_checked: true })) }
-        : prev,
-    );
-    await supabase.from("shopping_list_items").update({ is_checked: true }).eq("shopping_list_id", listId);
-    await supabase
+        : prev;
+    });
+    const { error: itemsError } = await supabase
+      .from("shopping_list_items")
+      .update({ is_checked: true })
+      .eq("shopping_list_id", listId);
+    if (itemsError) {
+      setList(snapshot);
+      return;
+    }
+    const { error: listError } = await supabase
       .from("shopping_lists")
       .update({ status: "completed", completed_at: new Date().toISOString() })
       .eq("id", listId);
+    if (listError) {
+      setList(snapshot);
+    }
   }, []);
 
   return { list, loading, error, toggleItem, completeList, uncompleteList, quickComplete };

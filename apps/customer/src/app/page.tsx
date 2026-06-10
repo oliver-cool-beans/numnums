@@ -162,6 +162,12 @@ export default function Home() {
   return (
     <main className="relative min-h-dvh w-full bg-white">
       <NumnumsBackground animated />
+      {/* Warm vignette for depth — fades edges to cream so the centre pops */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-[1]"
+        style={{ background: "radial-gradient(ellipse 85% 65% at 50% 40%, transparent 30%, rgba(255,235,200,0.28) 100%)" }}
+      />
       {/*
         Breakpoints:
           < md  (< 768px)  — mobile: single col, fixed bottom button
@@ -173,7 +179,9 @@ export default function Home() {
         {/* Content column */}
         <div className="flex flex-1 flex-col md:mx-auto md:w-full md:max-w-[580px] lg:mx-0 lg:flex-none lg:w-[440px] lg:justify-center lg:py-8">
           <header className="w-full">
-            <p className="text-left text-[min(52px,8svh)] font-semibold leading-none tracking-[-0.03em] md:text-[64px]">numnums</p>
+            <p className="text-left text-[min(52px,8svh)] font-semibold leading-none tracking-[-0.03em] md:text-[64px]">
+              <span className="text-[#3A2A1F]">num</span><span className="text-[#5FA66B]">nums</span>
+            </p>
           </header>
 
           {/* Middle content */}
@@ -181,6 +189,7 @@ export default function Home() {
 
             {/* Pot image — mobile + tablet (hidden on desktop where it moves to the right column) */}
             <div className="relative h-[min(200px,21svh)] w-[min(200px,21svh)] splash-pot md:h-[300px] md:w-[300px] lg:hidden">
+              <div className="absolute -inset-6 rounded-full bg-[#FFE7A3]/60 blur-3xl" aria-hidden="true" />
               <Image src="/pot.png" alt="Numnums cooking pot mascot" fill priority sizes="(max-width: 1024px) 300px, 200px" className="object-contain" />
               <span className="splash-veg-1 absolute left-4 top-[72px] h-7 w-7 rounded-full bg-[#58A6D6]" />
               <span className="splash-veg-2 absolute right-5 top-[92px] h-6 w-6 rounded-full bg-[#E58A45]" />
@@ -204,17 +213,6 @@ export default function Home() {
               tell us what you like and we&apos;ll sort your dinners.
             </p>
 
-            <div className="mt-[min(14px,2svh)] flex flex-wrap items-center justify-center gap-2 text-[13px] font-semibold tracking-[0.01em] text-[#5A4535] md:text-[14px] lg:justify-start">
-              <span className="rounded-full border border-[#DCC7A5] bg-[#FFF1D7] px-2.5 py-1 shadow-[0_1px_0_rgba(58,42,31,0.08)] md:px-3 md:py-1.5">
-                simple setup
-              </span>
-              <span className="rounded-full border border-[#DCC7A5] bg-[#FFF1D7] px-2.5 py-1 shadow-[0_1px_0_rgba(58,42,31,0.08)] md:px-3 md:py-1.5">
-                family-friendly
-              </span>
-              <span className="rounded-full border border-[#DCC7A5] bg-[#FFF1D7] px-2.5 py-1 shadow-[0_1px_0_rgba(58,42,31,0.08)] md:px-3 md:py-1.5">
-                zero overwhelm
-              </span>
-            </div>
           </div>
 
           {/* Desktop-only in-flow form */}
@@ -226,6 +224,7 @@ export default function Home() {
         {/* Right column: pot image — desktop only */}
         <div className="hidden lg:flex lg:w-[400px] lg:shrink-0 lg:items-center lg:justify-start xl:w-[460px]">
           <div className="relative h-[400px] w-[400px] splash-pot xl:h-[460px] xl:w-[460px]">
+            <div className="absolute -inset-10 rounded-full bg-[#FFE7A3]/50 blur-3xl" aria-hidden="true" />
             <Image
               src="/pot.png"
               alt="Numnums cooking pot mascot"
@@ -242,8 +241,10 @@ export default function Home() {
       </section>
 
       {/* Fixed CTA for mobile + tablet — lives outside the section to avoid iOS overflow/fixed bug */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 bg-gradient-to-t from-white via-white/90 to-transparent lg:hidden">
-        <MagicLinkForm redirectPath="/auth/complete?next=/dashboard" />
+      <div className="fixed bottom-0 left-0 right-0 z-20 lg:hidden">
+        <div className="bg-gradient-to-t from-white via-white/96 to-transparent px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-12">
+          <MagicLinkForm redirectPath="/auth/complete?next=/dashboard" />
+        </div>
       </div>
     </main>
   );

@@ -9,6 +9,7 @@ import { MealHeroCard } from "./MealHeroCard";
 type FriendsTodayBlockProps = {
   friendsToday: FriendToday[];
   onRecipeClick?: (recipeId: string) => void;
+  onInviteFriends?: () => void;
   isLoading?: boolean;
   className?: string;
   flat?: boolean;
@@ -18,7 +19,7 @@ const AVATAR_COLORS = ["#7CB342", "#F4B942", "#E85D5D", "#5B9BD5", "#9B6CD9", "#
 
 function avatarColor(id: string): string {
   let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  for (let i = 0; i < id.length; i++) hash = Math.trunc(hash * 31 + (id.codePointAt(i) ?? 0));
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
@@ -35,6 +36,7 @@ function blurb(entry: FriendToday): string {
 export function FriendsTodayBlock({
   friendsToday,
   onRecipeClick,
+  onInviteFriends,
   isLoading,
   className,
   flat,
@@ -54,7 +56,27 @@ export function FriendsTodayBlock({
     );
   }
 
-  if (friendsToday.length === 0) return null;
+  if (friendsToday.length === 0) {
+    const inviteButton = (
+      <button
+        type="button"
+        onClick={onInviteFriends}
+        className="flex w-full items-center justify-between rounded-[20px] border border-dashed border-[#D9CCBB] bg-[#FAF6F2] p-4 text-left transition-colors hover:bg-[#F5EDE0]"
+      >
+        <div>
+          <p className="text-sm font-semibold text-[#3A2A1F]">See what friends are cooking</p>
+          <p className="text-xs text-[#6F5B4B]">Invite a friend to compare dinners</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-[#7CB342] px-3 py-1 text-xs font-semibold text-white">
+          Invite
+        </span>
+      </button>
+    );
+
+    if (flat) return inviteButton;
+
+    return <div className={className ?? "mx-5 mb-4"}>{inviteButton}</div>;
+  }
 
   const cards = friendsToday.map(({ friend, recipe }) => {
     const initial = friend.name?.charAt(0).toUpperCase() || "?";

@@ -1,17 +1,16 @@
 "use client";
 
-import { CalendarDays, Heart, ShoppingCart, UserRound } from "lucide-react";
+import { CalendarDays, ShoppingCart, UserRound } from "lucide-react";
 
 type BottomNavProps = {
-  activeTab?: "week" | "list" | "favorites" | "profile";
-  onTabChange?: (tab: "week" | "list" | "favorites" | "profile") => void;
+  activeTab?: "week" | "list" | "profile";
+  onTabChange?: (tab: "week" | "list" | "profile") => void;
 };
 
 export function BottomNav({ activeTab = "week", onTabChange }: BottomNavProps) {
   const tabs = [
     { id: "week", label: "My Week", icon: CalendarDays },
     { id: "list", label: "List", icon: ShoppingCart },
-    { id: "favorites", label: "Favorites", icon: Heart },
     { id: "profile", label: "Profile", icon: UserRound },
   ] as const;
 

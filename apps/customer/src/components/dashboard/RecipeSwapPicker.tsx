@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { ArrowLeft, Check, ChevronRight, Loader2, Search, Shuffle } from "lucide-react";
+import { toast } from "@/lib/toast";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,6 @@ export function RecipeSwapPicker({
   const [recipes, setRecipes] = useState<OnboardingRecipe[]>([]);
   const [preferences, setPreferences] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [shownRandomIds, setShownRandomIds] = useState<string[]>([]);
@@ -66,7 +66,7 @@ export function RecipeSwapPicker({
         setPreferences(savedPreferences);
       })
       .catch((fetchError) => {
-        if (isMounted) setError(fetchError instanceof Error ? fetchError.message : "We couldn't load recipes.");
+        if (isMounted) toast.error(fetchError instanceof Error ? fetchError.message : "We couldn't load recipes.");
       })
       .finally(() => {
         if (isMounted) setLoading(false);
@@ -141,12 +141,6 @@ export function RecipeSwapPicker({
           <Shuffle className="size-4" />
           Surprise me
         </button>
-
-        {error && (
-          <div className="mt-4 rounded-[16px] border border-[#E4B9A3] bg-[#FFF1EB] px-4 py-3 text-sm text-[#9A4B1E]">
-            {error}
-          </div>
-        )}
 
         {loading ? (
           <div className="mt-8 flex items-center justify-center py-8">

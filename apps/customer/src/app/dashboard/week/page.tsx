@@ -4,8 +4,10 @@ import Image from "next/image";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2, Shuffle, Sparkles } from "lucide-react";
+import { toast } from "@/lib/toast";
 
 import { useAuth } from "@/lib/auth-context";
+import { SubPageShell } from "@/components/dashboard/SubPageShell";
 import { useUserMealPlan, useRecipeSwap, useFamilyContext } from "@/lib/hooks";
 import { RecipeSwapPicker, FamilyWeekPlan } from "@/components/dashboard";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
@@ -29,17 +31,15 @@ function WeekViewInner() {
   const { mealPlan, loading: mealPlanLoading, refetch } = useUserMealPlan(user?.id, week, year);
   const recipeSwap = useRecipeSwap(user?.id, refetch);
   const [regenerating, setRegenerating] = useState(false);
-  const [regenError, setRegenError] = useState<string | null>(null);
 
   const handleRegenerateWeek = async () => {
     if (!user) return;
     setRegenerating(true);
-    setRegenError(null);
     try {
       await generateWeekPlan(user.id, week, year);
       refetch();
     } catch (err) {
-      setRegenError(err instanceof Error ? err.message : "Regeneration failed. Please try again.");
+      toast.error(err instanceof Error ? err.message : "Regeneration failed. Please try again.");
     } finally {
       setRegenerating(false);
     }
@@ -52,12 +52,12 @@ function WeekViewInner() {
   if (!user) return null;
 
   return (
-    <>
-      <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-0 md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
+    <SubPageShell>
+      <main className="mx-auto flex h-full w-full max-w-[390px] flex-col bg-white md:h-auto md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
         <header className="flex items-center gap-3 px-5 pb-3 pt-14">
           <button
             type="button"
-            onClick={() => router.back()}
+            onClick={() => router.push("/dashboard")}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm transition-colors hover:bg-[#F5EDE0]"
             aria-label="Go back"
           >
@@ -86,6 +86,7 @@ function WeekViewInner() {
             <FamilyWeekPlan
               familyId={familyContext.familyId}
               ownerId={familyContext.ownerId}
+              ownerName={familyContext.ownerName}
               currentUserId={user.id}
               isOwner={familyContext.isOwner}
               week={week}
@@ -93,26 +94,17 @@ function WeekViewInner() {
             />
           ) : (
             <>
-              {regenError && (
-                <div className="mb-3 rounded-[16px] border border-[#E4B9A3] bg-[#FFF1EB] px-4 py-3 text-sm text-[#9A4B1E]">
-                  {regenError}
-                </div>
-              )}
-              {recipeSwap.error && (
-                <div className="mb-3 rounded-[16px] border border-[#E4B9A3] bg-[#FFF1EB] px-4 py-3 text-sm text-[#9A4B1E]">
-                  {recipeSwap.error}
-                </div>
-              )}
-
-              {mealPlanLoading ? (
+              {mealPlanLoading && (
                 <div className="flex items-center justify-center py-16">
                   <Loader2 className="size-5 animate-spin text-[#9E8B7E]" />
                 </div>
-              ) : !mealPlan ? (
+              )}
+              {!mealPlanLoading && !mealPlan && (
                 <div className="mt-4 rounded-2xl border border-dashed border-[#E8DCCB] bg-[#FAF6F2] px-4 py-6 text-center">
                   <p className="text-sm text-[#6F5B4B]">Nothing planned for this week yet.</p>
                 </div>
-              ) : (
+              )}
+              {!mealPlanLoading && mealPlan && (
                 <ul className="mt-2 space-y-2.5">
                   {mealPlan.days.map((entry) => {
                     const recipe = entry.recipe;
@@ -176,7 +168,7 @@ function WeekViewInner() {
           onSelect={(recipe) => void recipeSwap.handleSelect(recipe)}
         />
       )}
-    </>
+    </SubPageShell>
   );
 }
 

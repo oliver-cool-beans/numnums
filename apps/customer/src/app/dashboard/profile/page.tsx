@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Pencil } from "lucide-react";
+import { toast } from "@/lib/toast";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { SubPageShell } from "@/components/dashboard/SubPageShell";
 import { Switch } from "@/components/ui/switch";
 import { DIETARY_OPTIONS, fetchDietaryPreferences, saveDietaryPreferences } from "@/lib/dietaryPreferences";
 import {
@@ -20,18 +22,113 @@ function optionLabel(id: string) {
   return DIETARY_OPTIONS.find((option) => option.id === id)?.label ?? id;
 }
 
+function DietarySection({
+  loading,
+  isEditing,
+  saved,
+  draft,
+  isSaving,
+  onToggle,
+  onCancelEdit,
+  onSave,
+  onStartEdit,
+}: {
+  loading: boolean;
+  isEditing: boolean;
+  saved: string[];
+  draft: string[];
+  isSaving: boolean;
+  onToggle: (id: string) => void;
+  onCancelEdit: () => void;
+  onSave: () => void;
+  onStartEdit: () => void;
+}) {
+  if (loading) {
+    return <p className="mt-4 px-1 text-sm text-[#9E8B7E]">Loading...</p>;
+  }
+
+  if (isEditing) {
+    return (
+      <>
+        <div className="mt-4 grid grid-cols-2 gap-2.5">
+          {DIETARY_OPTIONS.map((option) => {
+            const isSelected = draft.includes(option.id);
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onToggle(option.id)}
+                className={cn(
+                  "relative min-h-[92px] rounded-[24px] border bg-white px-3 py-3 text-left transition-all",
+                  isSelected
+                    ? "border-[#7CB342] shadow-[0_12px_30px_rgba(124,179,66,0.18)]"
+                    : "border-[#E8DCCB] hover:-translate-y-0.5 hover:border-[#7CB342]/60",
+                )}
+              >
+                <span className={cn(
+                  "absolute right-2 top-2 flex size-7 items-center justify-center rounded-full border bg-white transition-colors",
+                  isSelected ? "border-[#689F38] bg-[#F4FFE8] text-[#689F38] shadow-sm" : "border-[#D9CCBB] text-transparent",
+                )}>
+                  <Check className="size-4" />
+                </span>
+                <div className="pr-8">
+                  <p className="text-sm font-semibold leading-5 text-[#3A2A1F]">{option.label}</p>
+                  <p className="mt-1 text-[0.68rem] leading-4 text-[#6F5B4B]">
+                    {isSelected ? "Included in picks" : "Tap to include"}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-5 flex gap-2.5">
+          <Button variant="outline" className="h-11 flex-1 rounded-full border-[#D9CCBB] bg-white text-[#3A2A1F]" onClick={onCancelEdit} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button className="h-11 flex-1 rounded-full bg-[#7CB342] text-white hover:bg-[#689F38]" onClick={onSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save preferences"}
+          </Button>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-[24px] border border-[#E8DCCB] bg-white px-4 py-4">
+      {saved.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {saved.map((id) => (
+            <span key={id} className="inline-flex items-center gap-1.5 rounded-full border border-[#7CB342]/40 bg-[#F4FFE8] px-3 py-1.5 text-xs font-semibold text-[#3A2A1F]">
+              <Check className="size-3 text-[#689F38]" strokeWidth={2.5} />
+              {optionLabel(id)}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-[#9E8B7E]">No preferences set yet.</p>
+      )}
+      <button
+        type="button"
+        onClick={onStartEdit}
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#D9CCBB] bg-white px-4 py-2 text-xs font-semibold text-[#3A2A1F] transition-colors hover:bg-[#F5EDE0]"
+      >
+        <Pencil className="size-3.5" />
+        {saved.length > 0 ? "Change preferences" : "Set preferences"}
+      </button>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const [saved, setSavedPreferences] = useState<string[]>([]);
+  const [saved, setSaved] = useState<string[]>([]);
   const [draft, setDraft] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingPreferences, setLoadingPreferences] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences | null>(null);
-  const [notificationError, setNotificationError] = useState<string | null>(null);
   const [updatingChannel, setUpdatingChannel] = useState<"push" | "email" | null>(null);
 
   useEffect(() => {
@@ -39,10 +136,10 @@ export default function ProfilePage() {
     let isMounted = true;
     fetchDietaryPreferences(user.id)
       .then((preferences) => {
-        if (isMounted) setSavedPreferences(preferences);
+        if (isMounted) setSaved(preferences);
       })
       .catch((fetchError) => {
-        if (isMounted) setError(fetchError instanceof Error ? fetchError.message : "We couldn't load your preferences.");
+        if (isMounted) toast.error(fetchError instanceof Error ? fetchError.message : "We couldn't load your preferences.");
       })
       .finally(() => {
         if (isMounted) setLoadingPreferences(false);
@@ -58,18 +155,13 @@ export default function ProfilePage() {
         if (isMounted) setNotificationPreferences(preferences);
       })
       .catch((fetchError) => {
-        if (isMounted) {
-          setNotificationError(
-            fetchError instanceof Error ? fetchError.message : "We couldn't load your notification settings.",
-          );
-        }
+        if (isMounted) toast.error(fetchError instanceof Error ? fetchError.message : "We couldn't load your notification settings.");
       });
     return () => { isMounted = false; };
   }, [user?.id]);
 
   const handleTogglePush = async (next: boolean) => {
     if (!user?.id || updatingChannel) return;
-    setNotificationError(null);
     setUpdatingChannel("push");
     const previous = notificationPreferences;
     setNotificationPreferences((current) => (current ? { ...current, pushEnabled: next } : current));
@@ -92,9 +184,7 @@ export default function ProfilePage() {
       }
     } catch (toggleError) {
       setNotificationPreferences(previous);
-      setNotificationError(
-        toggleError instanceof Error ? toggleError.message : "We couldn't update your push notification setting.",
-      );
+      toast.error(toggleError instanceof Error ? toggleError.message : "We couldn't update your push notification setting.");
     } finally {
       setUpdatingChannel(null);
     }
@@ -102,7 +192,6 @@ export default function ProfilePage() {
 
   const handleToggleEmail = async (next: boolean) => {
     if (!user?.id || updatingChannel) return;
-    setNotificationError(null);
     setUpdatingChannel("email");
     const previous = notificationPreferences;
     setNotificationPreferences((current) => (current ? { ...current, emailEnabled: next } : current));
@@ -111,9 +200,7 @@ export default function ProfilePage() {
       await saveNotificationPreferences(user.id, { emailEnabled: next });
     } catch (toggleError) {
       setNotificationPreferences(previous);
-      setNotificationError(
-        toggleError instanceof Error ? toggleError.message : "We couldn't update your email setting.",
-      );
+      toast.error(toggleError instanceof Error ? toggleError.message : "We couldn't update your email setting.");
     } finally {
       setUpdatingChannel(null);
     }
@@ -124,7 +211,6 @@ export default function ProfilePage() {
   }
 
   const startEditing = () => {
-    setError(null);
     setDraft(saved);
     setIsEditing(true);
   };
@@ -136,24 +222,24 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!user?.id) return;
     setIsSaving(true);
-    setError(null);
     try {
       await saveDietaryPreferences(user.id, draft);
-      setSavedPreferences(draft);
+      setSaved(draft);
       setIsEditing(false);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "We couldn't save your preferences.");
+      toast.error(saveError instanceof Error ? saveError.message : "We couldn't save your preferences.");
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-0 md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
+    <SubPageShell activeTab="profile">
+    <main className="mx-auto flex h-full w-full max-w-[390px] flex-col bg-white md:h-auto md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
       <header className="flex items-center gap-3 px-5 pb-3 pt-14">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => router.push("/dashboard")}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm transition-colors hover:bg-[#F5EDE0]"
           aria-label="Go back"
         >
@@ -170,96 +256,17 @@ export default function ProfilePage() {
           We&apos;ll use these to filter and prioritize your recipe picks each week.
         </p>
 
-        {loadingPreferences ? (
-          <p className="mt-4 px-1 text-sm text-[#9E8B7E]">Loading...</p>
-        ) : isEditing ? (
-          <>
-            <div className="mt-4 grid grid-cols-2 gap-2.5">
-              {DIETARY_OPTIONS.map((option) => {
-                const isSelected = draft.includes(option.id);
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => toggle(option.id)}
-                    className={cn(
-                      "relative min-h-[92px] rounded-[24px] border bg-white px-3 py-3 text-left transition-all",
-                      isSelected
-                        ? "border-[#7CB342] shadow-[0_12px_30px_rgba(124,179,66,0.18)]"
-                        : "border-[#E8DCCB] hover:-translate-y-0.5 hover:border-[#7CB342]/60",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "absolute right-2 top-2 flex size-7 items-center justify-center rounded-full border bg-white transition-colors",
-                        isSelected
-                          ? "border-[#689F38] bg-[#F4FFE8] text-[#689F38] shadow-sm"
-                          : "border-[#D9CCBB] text-transparent",
-                      )}
-                    >
-                      <Check className="size-4" />
-                    </span>
-                    <div className="pr-8">
-                      <p className="text-sm font-semibold leading-5 text-[#3A2A1F]">{option.label}</p>
-                      <p className="mt-1 text-[0.68rem] leading-4 text-[#6F5B4B]">
-                        {isSelected ? "Included in picks" : "Tap to include"}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-
-            <div className="mt-5 flex gap-2.5">
-              <Button
-                variant="outline"
-                className="h-11 flex-1 rounded-full border-[#D9CCBB] bg-white text-[#3A2A1F]"
-                onClick={() => setIsEditing(false)}
-                disabled={isSaving}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="h-11 flex-1 rounded-full bg-[#7CB342] text-white hover:bg-[#689F38]"
-                onClick={() => void handleSave()}
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Save preferences"}
-              </Button>
-            </div>
-          </>
-        ) : (
-          <div className="mt-4 rounded-[24px] border border-[#E8DCCB] bg-white px-4 py-4">
-            {saved.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {saved.map((id) => (
-                  <span
-                    key={id}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[#7CB342]/40 bg-[#F4FFE8] px-3 py-1.5 text-xs font-semibold text-[#3A2A1F]"
-                  >
-                    <Check className="size-3 text-[#689F38]" strokeWidth={2.5} />
-                    {optionLabel(id)}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-[#9E8B7E]">No preferences set yet.</p>
-            )}
-
-            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-
-            <button
-              type="button"
-              onClick={startEditing}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#D9CCBB] bg-white px-4 py-2 text-xs font-semibold text-[#3A2A1F] transition-colors hover:bg-[#F5EDE0]"
-            >
-              <Pencil className="size-3.5" />
-              {saved.length > 0 ? "Change preferences" : "Set preferences"}
-            </button>
-          </div>
-        )}
+        <DietarySection
+          loading={loadingPreferences}
+          isEditing={isEditing}
+          saved={saved}
+          draft={draft}
+          isSaving={isSaving}
+          onToggle={toggle}
+          onCancelEdit={() => setIsEditing(false)}
+          onSave={() => void handleSave()}
+          onStartEdit={startEditing}
+        />
 
         <h2 className="mt-8 text-base font-semibold text-[#3A2A1F]">Communications</h2>
         <p className="mt-1 text-sm leading-5 text-[#6F5B4B]">
@@ -296,8 +303,8 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {notificationError && <p className="mt-3 text-sm text-red-600">{notificationError}</p>}
       </div>
     </main>
+    </SubPageShell>
   );
 }

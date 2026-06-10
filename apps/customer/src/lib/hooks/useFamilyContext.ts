@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase-client";
 
-export type FamilyContext = { familyId: string; ownerId: string; isOwner: boolean };
+export type FamilyContext = {
+  familyId: string;
+  familyName: string;
+  ownerId: string;
+  ownerName: string | null;
+  isOwner: boolean;
+};
 
 /**
  * Resolves the current user's family membership (if any) so pages outside
@@ -30,25 +36,44 @@ export function useFamilyContext(userId: string | undefined): FamilyContext | nu
         return;
       }
 
-      if (membership.role === "owner") {
-        if (isMounted) setContext({ familyId: membership.family_id, ownerId: userId, isOwner: true });
-        return;
-      }
+      const familyId = membership.family_id;
 
-      const { data: owner, error: ownerError } = await supabase
-        .from("family_members")
-        .select("user_id")
-        .eq("family_id", membership.family_id)
-        .eq("role", "owner")
-        .maybeSingle();
+      const [familyResult, ownerResult] = await Promise.all([
+        supabase.from("families").select("name").eq("id", familyId).maybeSingle(),
+        membership.role === "owner"
+          ? Promise.resolve({ data: { user_id: userId, user: null as { name: string | null } | null }, error: null })
+          : supabase
+              .from("family_members")
+              .select("user_id, user:users(name)")
+              .eq("family_id", familyId)
+              .eq("role", "owner")
+              .maybeSingle(),
+      ]);
 
-      if (ownerError || !owner) {
-        if (ownerError) console.error("[family-context] Failed to load family owner", ownerError);
+      if (familyResult.error || !familyResult.data) {
+        console.error("[family-context] Failed to load family", familyResult.error);
         if (isMounted) setContext(null);
         return;
       }
 
-      if (isMounted) setContext({ familyId: membership.family_id, ownerId: owner.user_id, isOwner: false });
+      if (ownerResult.error || !ownerResult.data) {
+        console.error("[family-context] Failed to load family owner", ownerResult.error);
+        if (isMounted) setContext(null);
+        return;
+      }
+
+      const ownerRow = ownerResult.data as { user_id: string; user: { name: string | null } | { name: string | null }[] | null };
+      const ownerUser = Array.isArray(ownerRow.user) ? (ownerRow.user[0] ?? null) : ownerRow.user;
+
+      if (isMounted) {
+        setContext({
+          familyId,
+          familyName: familyResult.data.name,
+          ownerId: ownerRow.user_id,
+          ownerName: ownerUser?.name ?? null,
+          isOwner: membership.role === "owner",
+        });
+      }
     };
 
     load();

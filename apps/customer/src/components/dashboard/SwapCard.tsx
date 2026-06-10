@@ -4,11 +4,12 @@ import { Lightbulb } from "lucide-react";
 
 type SwapCardProps = {
   isVisible?: boolean;
+  recipeName?: string;
   onSwap?: () => void;
   className?: string;
 };
 
-export function SwapCard({ isVisible = true, onSwap, className }: SwapCardProps) {
+export function SwapCard({ isVisible = true, recipeName, onSwap, className }: SwapCardProps) {
   if (!isVisible) return null;
 
   return (
@@ -18,8 +19,10 @@ export function SwapCard({ isVisible = true, onSwap, className }: SwapCardProps)
           <Lightbulb aria-hidden="true" className="h-5 w-5 text-[#3A2A1F]" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-[#3A2A1F]">Want a swap?</p>
-          <p className="text-xs text-[#6F5B4B]">Change Friday&apos;s dinner before we build your list.</p>
+          <p className="text-sm font-semibold text-[#3A2A1F]">
+            {recipeName ? `Not feeling ${recipeName}?` : "Want a swap?"}
+          </p>
+          <p className="text-xs text-[#6F5B4B]">Swap tonight&apos;s dinner before we build your list.</p>
         </div>
       </div>
       <button

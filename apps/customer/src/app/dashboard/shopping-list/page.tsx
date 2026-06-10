@@ -6,8 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronLeft, ChevronRight, Check, ShoppingCart, Copy } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useShoppingListFull, type EnrichedItem } from "@/lib/hooks/useShoppingListFull";
-import { SideNav } from "@/components/dashboard";
-import { NumnumsBackground } from "@/components/ui/NumnumsBackground";
+import { SubPageShell } from "@/components/dashboard";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, getCurrentWeek, getWeekAtOffset, getWeekLabel } from "@/lib/utils";
@@ -24,28 +23,35 @@ const CATEGORY_ORDER = [
   "Pantry & Other",
 ];
 
-function deriveCategory(handle: string, productCategory: string | null, isPantry: boolean): string {
-  if (isPantry) return "Pantry & Other";
+function categoryFromProductCategory(c: string): string | null {
+  if (/(meat|poultry|fish|seafood)/.test(c)) return "Meat & Fish";
+  if (/(dairy|egg|cheese|milk)/.test(c)) return "Dairy & Eggs";
+  if (/(veg|produce|salad|fresh)/.test(c)) return "Vegetables";
+  if (/fruit/.test(c)) return "Fruit";
+  if (/(bread|bakery)/.test(c)) return "Bakery";
+  if (/(herb|spice)/.test(c)) return "Fresh Herbs";
+  return null;
+}
 
-  if (productCategory) {
-    const c = productCategory.toLowerCase();
-    if (/(meat|poultry|fish|seafood)/.test(c)) return "Meat & Fish";
-    if (/(dairy|egg|cheese|milk)/.test(c)) return "Dairy & Eggs";
-    if (/(veg|produce|salad|fresh)/.test(c)) return "Vegetables";
-    if (/fruit/.test(c)) return "Fruit";
-    if (/(bread|bakery)/.test(c)) return "Bakery";
-    if (/(herb|spice)/.test(c)) return "Fresh Herbs";
-  }
-
-  const h = handle.toLowerCase();
+function categoryFromHandle(h: string): string {
   if (/(chicken|beef|pork|lamb|turkey|bacon|sausage|mince|salmon|tuna|cod|fish|prawn|shrimp|ham|steak|duck)/.test(h)) return "Meat & Fish";
   if (/(^milk|cheese|butter|cream|yogur|cheddar|mozzarella|parmesan|feta|ricotta|-egg)/.test(h)) return "Dairy & Eggs";
   if (/(bread|baguette|tortilla|pitta|wrap|naan)/.test(h)) return "Bakery";
   if (/(coriander|parsley|basil|mint|thyme|rosemary|chive|dill|sage|oregano)/.test(h)) return "Fresh Herbs";
-  if (/(lemon|lime|orange|apple|banana|mango|strawberry|raspberry|grape|pear|blueberry|kiwi|melon|pineapple|cherry|peach)/.test(h)) return "Fruit";
-  if (/(tomato|onion|garlic|carrot|potato|broccoli|spinach|lettuce|pepper|aubergine|mushroom|leek|celery|cucumber|beetroot|asparagus|courgette|kale|cabbage|cauliflower|ginger|parsnip|squash|pumpkin|capsicum|avocado)/.test(h)) return "Vegetables";
-
+  if (/(lemon|lime|orange|apple|banana|mango|strawberry|raspberry|grape|pear|blueberry|kiwi|melon)/.test(h)) return "Fruit";
+  if (/(pineapple|cherry|peach)/.test(h)) return "Fruit";
+  if (/(tomato|onion|garlic|carrot|potato|broccoli|spinach|lettuce|pepper|aubergine|mushroom|leek)/.test(h)) return "Vegetables";
+  if (/(celery|cucumber|beetroot|asparagus|courgette|kale|cabbage|cauliflower|ginger|parsnip|squash|pumpkin|capsicum|avocado)/.test(h)) return "Vegetables";
   return "Pantry & Other";
+}
+
+function deriveCategory(handle: string, productCategory: string | null, isPantry: boolean): string {
+  if (isPantry) return "Pantry & Other";
+  if (productCategory) {
+    const result = categoryFromProductCategory(productCategory.toLowerCase());
+    if (result) return result;
+  }
+  return categoryFromHandle(handle.toLowerCase());
 }
 
 const SOURCE_LOGOS: Record<string, { src: string; alt: string }> = {
@@ -74,13 +80,15 @@ function groupByCategory(items: EnrichedItem[]): { category: string; items: Enri
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
+function deriveName(item: EnrichedItem): string {
+  if (item.product_name) return item.product_name;
+  if (item.ingredient_handle) return formatHandle(item.ingredient_handle);
+  return "Item";
+}
+
 function ItemRow({ item, onToggle }: { item: EnrichedItem; onToggle: (id: string, checked: boolean) => void }) {
   const [imgLoaded, setImgLoaded] = useState(false);
-  const name = item.product_name
-    ? item.product_name
-    : item.ingredient_handle
-      ? formatHandle(item.ingredient_handle)
-      : "Item";
+  const name = deriveName(item);
   const subtitle = item.product_name && item.ingredient_handle ? formatHandle(item.ingredient_handle) : null;
   const qty = item.quantity_needed > 1 ? `×${item.quantity_needed}` : null;
   const sourceLogo = item.product_source ? SOURCE_LOGOS[item.product_source.toLowerCase()] : null;
@@ -242,27 +250,13 @@ function WeekNav({
 
 function PageShell({
   children,
-  router,
 }: {
   children: React.ReactNode;
-  router: ReturnType<typeof useRouter>;
 }) {
-  const handleNavChange = (tab: "week" | "list" | "favorites" | "profile") => {
-    if (tab === "week") router.push("/dashboard");
-  };
-
   return (
-    <div className="min-h-dvh w-full bg-white md:flex md:h-dvh md:overflow-hidden md:bg-[#FAF6F2]">
-      <SideNav activeTab="list" onTabChange={handleNavChange} />
-      <div className="flex flex-1 flex-col md:overflow-y-auto">
-        <div className="relative flex flex-1 flex-col">
-          <NumnumsBackground />
-          <div className="relative z-10 flex flex-1 flex-col md:items-center md:justify-start md:p-6 lg:p-8">
-            {children}
-          </div>
-        </div>
-      </div>
-    </div>
+    <SubPageShell activeTab="list">
+      {children}
+    </SubPageShell>
   );
 }
 
@@ -281,8 +275,7 @@ function ShoppingListInner() {
   const activeYear = paramYear ? Number(paramYear) : currentYear;
   const isCurrentWeek = activeWeek === currentWeek && activeYear === currentYear;
 
-  const weekFilter =
-    !isCurrentWeek ? { weekNumber: activeWeek, weekYear: activeYear } : undefined;
+  const weekFilter = isCurrentWeek ? undefined : { weekNumber: activeWeek, weekYear: activeYear };
 
   const { list, loading, error, toggleItem, completeList, uncompleteList, quickComplete } = useShoppingListFull(
     user?.id,
@@ -290,14 +283,21 @@ function ShoppingListInner() {
   );
 
   const [listCopied, setListCopied] = useState(false);
+  const [showPantry, setShowPantry] = useState(false);
+
+  const visibleItems = list
+    ? list.items.filter((i) => showPantry || !i.is_pantry)
+    : [];
+  const pantryCount = list
+    ? list.items.filter((i) => i.is_pantry).length
+    : 0;
 
   const copyList = () => {
     if (!list) return;
-    const groups = groupByCategory(list.items);
+    const groups = groupByCategory(visibleItems);
     const lines: string[] = ["Shopping list:"];
     for (const { category, items } of groups) {
-      lines.push("");
-      lines.push(category);
+      lines.push("", category);
       for (const item of items) {
         const name = item.product_name || formatHandle(item.ingredient_handle);
         const qty = item.quantity_needed > 1 ? ` ×${item.quantity_needed}` : "";
@@ -314,23 +314,8 @@ function ShoppingListInner() {
   }, [authLoading, user, router]);
 
   const navigate = (weekOffset: number) => {
-    // Compute the target week by adding offset weeks
-    const target = new Date();
-    target.setDate(target.getDate() + weekOffset * 7);
-    // We need getWeekAtOffset relative to the active week, not current date.
-    // So compute: active week's Monday + offset * 7
-    const { week: cw, year: cy } = getCurrentWeek();
-    const weekDiff = (activeYear - cy) * 52 + (activeWeek - cw) + weekOffset;
-    const { week: nextWeek, year: nextYear } = (() => {
-      const d = new Date();
-      d.setDate(d.getDate() + weekDiff * 7);
-      const utc = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-      const day = utc.getUTCDay() || 7;
-      utc.setUTCDate(utc.getUTCDate() + 4 - day);
-      const ys = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
-      const wk = Math.ceil((((utc.getTime() - ys.getTime()) / 86400000) + 1) / 7);
-      return { week: wk, year: utc.getUTCFullYear() };
-    })();
+    const totalOffset = (activeYear - currentYear) * 52 + (activeWeek - currentWeek) + weekOffset;
+    const { week: nextWeek, year: nextYear } = getWeekAtOffset(totalOffset);
     router.push(`/dashboard/shopping-list?week=${nextWeek}&year=${nextYear}`);
   };
 
@@ -346,12 +331,12 @@ function ShoppingListInner() {
   // categorized item rows) so the real content can drop straight into place.
   if (loading) {
     return (
-      <PageShell router={router}>
+      <PageShell>
         <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-0 md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
           <header className="flex items-center gap-3 px-5 pb-3 pt-14">
             <button
               type="button"
-              onClick={() => router.back()}
+              onClick={() => router.push("/dashboard")}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm"
               aria-label="Go back"
             >
@@ -369,7 +354,7 @@ function ShoppingListInner() {
             <Skeleton className="h-8 w-8 shrink-0 rounded-full bg-[#F0E8DE]" />
           </div>
 
-          <Skeleton className="mx-5 mb-1 h-1.5 rounded-full bg-[#F0E8DE]" />
+          <Skeleton className="mx-5 mb-1 h-2.5 rounded-full bg-[#F0E8DE]" />
 
           <div className="flex justify-end px-5 pb-2 pt-2">
             <Skeleton className="h-4 w-24 bg-[#F0E8DE]" />
@@ -389,10 +374,10 @@ function ShoppingListInner() {
 
   if (error) {
     return (
-      <PageShell router={router}>
+      <PageShell>
         <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-[400px] md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
           <header className="flex items-center gap-3 px-5 pb-4 pt-14">
-            <button type="button" onClick={() => router.back()} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm" aria-label="Go back">
+            <button type="button" onClick={() => router.push("/dashboard")} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm" aria-label="Go back">
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h1 className="text-2xl font-semibold text-[#3A2A1F]">Shopping list</h1>
@@ -407,10 +392,10 @@ function ShoppingListInner() {
 
   if (!list || list.items.length === 0) {
     return (
-      <PageShell router={router}>
+      <PageShell>
         <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-[400px] md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
           <header className="flex items-center gap-3 px-5 pb-3 pt-14">
-            <button type="button" onClick={() => router.back()} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm" aria-label="Go back">
+            <button type="button" onClick={() => router.push("/dashboard")} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm" aria-label="Go back">
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h1 className="text-2xl font-semibold text-[#3A2A1F]">Shopping list</h1>
@@ -442,17 +427,17 @@ function ShoppingListInner() {
     );
   }
 
-  const groups = groupByCategory(list.items);
-  const totalItems = list.items.length;
-  const checkedItems = list.items.filter((i) => i.is_checked).length;
+  const groups = groupByCategory(visibleItems);
+  const totalItems = visibleItems.length;
+  const checkedItems = visibleItems.filter((i) => i.is_checked).length;
   const isCompleted = list.status === "completed";
 
   if (isCompleted) {
     return (
-      <PageShell router={router}>
+      <PageShell>
         <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-[400px] md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
           <header className="flex items-center gap-3 px-5 pb-3 pt-14">
-            <button type="button" onClick={() => router.back()} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm" aria-label="Go back">
+            <button type="button" onClick={() => router.push("/dashboard")} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm" aria-label="Go back">
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h1 className="text-2xl font-semibold text-[#3A2A1F]">Shopping list</h1>
@@ -494,12 +479,12 @@ function ShoppingListInner() {
   }
 
   return (
-    <PageShell router={router}>
+    <PageShell>
       <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-0 md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
         <header className="flex items-center gap-3 px-5 pb-3 pt-14">
           <button
             type="button"
-            onClick={() => router.back()}
+            onClick={() => router.push("/dashboard")}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm transition-colors hover:bg-[#F5EDE0]"
             aria-label="Go back"
           >
@@ -528,18 +513,29 @@ function ShoppingListInner() {
           isCurrentWeek={isCurrentWeek}
         />
 
-        <div className="mx-5 mb-1 h-1.5 overflow-hidden rounded-full bg-[#F0E8DE]">
+        <div className="mx-5 mb-1 h-2.5 overflow-hidden rounded-full bg-[#F0E8DE]">
           <div
             className="h-full rounded-full bg-[#7CB342] transition-all duration-300"
             style={{ width: `${totalItems > 0 ? (checkedItems / totalItems) * 100 : 0}%` }}
           />
         </div>
 
-        <div className="flex justify-end px-5 pb-2 pt-2">
+        <div className="flex items-center justify-between px-5 pb-3 pt-2">
+          {pantryCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowPantry((v) => !v)}
+              className="text-sm text-[#9E8B7E] underline underline-offset-2 transition-colors active:text-[#3A2A1F]"
+            >
+              {showPantry ? "Hide pantry items" : `Show pantry items (${pantryCount})`}
+            </button>
+          ) : (
+            <span />
+          )}
           <button
             type="button"
             onClick={() => quickComplete(list.id)}
-            className="text-sm text-[#9E8B7E] underline underline-offset-2 transition-colors active:text-[#3A2A1F]"
+            className="rounded-full bg-[#F0E8DE] px-3 py-1.5 text-xs font-semibold text-[#6F5B4B] transition-colors active:bg-[#E7D9CD] active:text-[#3A2A1F]"
           >
             Mark all done
           </button>

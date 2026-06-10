@@ -8,6 +8,7 @@ import {
   isInstalledOnIOS,
   subscribeToPush,
 } from "@/lib/pushNotifications";
+import { toast } from "@/lib/toast";
 
 type EnableNotificationsPromptProps = {
   userId: string;
@@ -23,22 +24,20 @@ type EnableNotificationsPromptProps = {
  */
 export function EnableNotificationsPrompt({ userId, title, message, onDismiss, className }: EnableNotificationsPromptProps) {
   const [isEnabling, setIsEnabling] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   if (getPushPermissionState() !== "default") return null;
 
   const handleEnable = async () => {
     setIsEnabling(true);
-    setError(null);
     try {
       if (isInstalledOnIOS()) {
-        setError("Add NumNums to your home screen first, then enable notifications from there.");
+        toast.error("Add NumNums to your home screen first, then enable notifications from there.");
         return;
       }
       await subscribeToPush(userId);
       onDismiss();
     } catch (subscribeError) {
-      setError(subscribeError instanceof Error ? subscribeError.message : "We couldn't enable notifications.");
+      toast.error(subscribeError instanceof Error ? subscribeError.message : "We couldn't enable notifications.");
     } finally {
       setIsEnabling(false);
     }
@@ -63,8 +62,6 @@ export function EnableNotificationsPrompt({ userId, title, message, onDismiss, c
           <X className="size-4" />
         </button>
       </div>
-
-      {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
 
       <div className="mt-3 flex gap-2.5">
         <Button

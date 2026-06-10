@@ -7,7 +7,8 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 type CallbackState =
   | { status: "working"; message: string }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string }
+  | { status: "open-in-app"; next: string };
 
 function AuthCompleteInner() {
   const router = useRouter();
@@ -26,6 +27,11 @@ function AuthCompleteInner() {
     const authError = searchParams.get("error");
     const authErrorDescription = searchParams.get("error_description");
 
+    const isStandalone =
+      globalThis.window.matchMedia("(display-mode: standalone)").matches ||
+      ("standalone" in globalThis.window.navigator &&
+        (globalThis.window.navigator as { standalone?: boolean }).standalone === true);
+
     const redirectToNext = (reason: string, userId: string | null) => {
       if (cancelled) {
         return;
@@ -39,9 +45,14 @@ function AuthCompleteInner() {
         reason,
         next,
         userId,
+        isStandalone,
       });
 
-      router.replace(next);
+      if (isStandalone) {
+        router.replace(next);
+      } else {
+        setState({ status: "open-in-app", next });
+      }
     };
 
     const checkCurrentSession = async (reason: string) => {
@@ -138,8 +149,8 @@ function AuthCompleteInner() {
           console.warn("[customer-auth-callback] Session was not ready after waiting, rechecking");
 
           if (await checkCurrentSession("timeout recheck")) {
-          return;
-        }
+            return;
+          }
 
           if (!cancelled) {
             console.error("[customer-auth-callback] Timed out waiting for browser PKCE session detection");
@@ -165,12 +176,43 @@ function AuthCompleteInner() {
     };
   }, [router, searchParams]);
 
-  return (
-    <LoadingScreen
-      title={state.status === "working" ? "Signing you in" : "Login failed"}
-      message={state.message}
-    />
-  );
+  if (state.status === "open-in-app") {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-white px-6 text-center text-[#3A2A1F]">
+        <p className="text-[24px] font-semibold leading-none tracking-[-0.02em]">numnums</p>
+        <div className="space-y-2">
+          <h1 className="text-[28px] font-semibold leading-[1.15] tracking-[-0.02em]">You&apos;re signed in</h1>
+          <p className="text-[16px] leading-[1.3] text-[#6F5B4B]">Open the app from your home screen to continue.</p>
+        </div>
+        <a
+          href={state.next}
+          className="mt-2 inline-flex h-14 items-center rounded-full bg-[#7CB342] px-8 text-[18px] font-semibold text-white shadow-[0_4px_0_rgba(58,42,31,0.08)] active:bg-[#558B2F]"
+        >
+          Open the app
+        </a>
+      </main>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-white px-6 text-center text-[#3A2A1F]">
+        <p className="text-[24px] font-semibold leading-none tracking-[-0.02em]">numnums</p>
+        <div className="space-y-2">
+          <h1 className="text-[28px] font-semibold leading-[1.15] tracking-[-0.02em]">Sign in failed</h1>
+          <p className="text-[16px] leading-[1.3] text-[#6F5B4B]">{state.message}</p>
+        </div>
+        <a
+          href="/"
+          className="mt-2 inline-flex h-14 items-center rounded-full bg-[#3A2A1F] px-8 text-[18px] font-semibold text-white shadow-[0_4px_0_rgba(58,42,31,0.08)] active:bg-[#5C4A3A]"
+        >
+          Back to sign in
+        </a>
+      </main>
+    );
+  }
+
+  return <LoadingScreen title="Signing you in" message={state.message} />;
 }
 
 export default function AuthCompletePage() {

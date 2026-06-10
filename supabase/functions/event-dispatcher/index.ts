@@ -1,4 +1,4 @@
-import { dispatchToLoops, firstName, type WebhookEvent } from "./loops.ts";
+import { dispatchToLoops, type WebhookEvent } from "./loops.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 // Provided by the Supabase Edge Functions runtime, not the Deno standard lib.

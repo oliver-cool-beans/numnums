@@ -4,10 +4,6 @@ const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPAB
 
 const LOOPS_API_KEY = Deno.env.get("LOOPS_API_KEY")!;
 
-export function firstName(name: string | null | undefined, fallback: string): string {
-  return name?.split(" ")[0] || fallback;
-}
-
 export type WebhookEvent = {
   type: "INSERT" | "UPDATE" | "DELETE";
   table: string;
@@ -50,7 +46,8 @@ async function send(
   });
 
   if (!response.ok) {
-    console.error(`[event-dispatcher] loops event "${eventName}" failed`, response.status, await response.text());
+    const body = await response.text();
+    throw new Error(`[event-dispatcher] loops event "${eventName}" failed (${response.status}): ${body}`);
   }
 }
 
@@ -85,29 +82,6 @@ async function trackRecipeProgress(record: Row, oldRecord: Row | null): Promise<
   else if (status === "completed") await trackForUser(record, userId, "Recipe Completed");
 }
 
-/**
- * Sends the "you've been invited" email — Loops owns delivery via an automated
- * loop triggered by this event, so eventProperties carry everything needed to
- * render it (the signed URL is built by the API route, where the secret lives).
- */
-async function trackInviteSent(record: Row): Promise<void> {
-  const email = record.invitee_email as string | null | undefined;
-  const url = record.invite_url as string | null | undefined;
-  const inviterId = record.inviter_id as string | undefined;
-  const kind = record.kind as string | undefined;
-  if (!email || !url || !inviterId || (kind !== "friend" && kind !== "family")) return;
-
-  const { data: inviter } = await supabase.from("users").select("name").eq("id", inviterId).maybeSingle();
-  const eventName = kind === "family" ? "Family Invite Sent" : "Friend Invite Sent";
-  const idempotencyKey = typeof record.id === "string" ? `${eventName}:${record.id}` : undefined;
-  await send(
-    email,
-    eventName,
-    { url, inviterName: firstName(inviter?.name, "Someone") },
-    idempotencyKey,
-  );
-}
-
 async function trackFamilyInviteAccepted(record: Row): Promise<void> {
   const familyId = record.family_id as string | undefined;
   const role = record.role as string | undefined;
@@ -129,7 +103,6 @@ async function trackFamilyInviteAccepted(record: Row): Promise<void> {
  */
 const RESOLVERS: Record<string, Resolver> = {
   "users:INSERT": (record) => trackForUser(record, record.id as string | undefined, "Signed Up"),
-  "invites:INSERT": (record) => trackInviteSent(record),
   "friendships:INSERT": (record) =>
     trackForUser(record, record.requester_id as string | undefined, "Invite Accepted", { type: "friend" }),
   "family_members:INSERT": (record) => trackFamilyInviteAccepted(record),

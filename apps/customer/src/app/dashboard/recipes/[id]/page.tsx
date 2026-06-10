@@ -9,14 +9,13 @@ import {
   Check,
   Clock,
   ChefHat,
-  AlignJustify,
-  Layers,
   Copy,
 } from "lucide-react";
 import { useTodayRecipe } from "@/lib/hooks";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase-client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SubPageShell } from "@/components/dashboard/SubPageShell";
 
 // ── Instruction parser ────────────────────────────────────────────────────────
 
@@ -140,7 +139,7 @@ export default function RecipePage() {
   const { recipe, loading } = useTodayRecipe(user?.id, recipeId);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [smoothMode, setSmoothMode] = useState(false);
+  const [justCompleted, setJustCompleted] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
   const [ingredientsCopied, setIngredientsCopied] = useState(false);
 
@@ -148,7 +147,8 @@ export default function RecipePage() {
     const lines = [`${recipe?.name ?? "Recipe"} – ingredients:`];
     for (const ing of recipe?.ingredients ?? []) {
       const name = formatIngredientName(ing.handle);
-      const qty = ing.quantity != null ? ` – ${ing.quantity}${ing.unit ? ` ${ing.unit}` : ""}` : "";
+      const unit = ing.unit ? ` ${ing.unit}` : "";
+      const qty = ing.quantity == null ? "" : ` – ${ing.quantity}${unit}`;
       lines.push(`• ${name}${qty}`);
     }
     navigator.clipboard.writeText(lines.join("\n"));
@@ -173,11 +173,10 @@ export default function RecipePage() {
     const acquire = async () => {
       try {
         const lock = await (navigator as Navigator & { wakeLock: { request: (type: string) => Promise<WakeLockSentinel> } }).wakeLock.request("screen");
-        if (!active) {
-          // component already unmounted while we were awaiting — release immediately
-          lock.release();
-        } else {
+        if (active) {
           sentinel = lock;
+        } else {
+          lock.release();
         }
       } catch {
         // unsupported or permission denied — silently ignore
@@ -221,6 +220,7 @@ export default function RecipePage() {
 
   const handleComplete = async () => {
     if (!user?.id) return;
+    setJustCompleted(true);
     await supabase.from("user_recipe_progress").upsert(
       {
         user_id: user.id,
@@ -230,90 +230,79 @@ export default function RecipePage() {
       },
       { onConflict: "user_id,recipe_id" },
     );
-    router.back();
   };
 
   const scrollToTop = () => {
-    containerRef.current?.scrollTo({
-      top: 0,
-      behavior: smoothMode ? "smooth" : "instant",
-    });
+    containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Mirror the overview section's layout so the real content can drop straight
   // into place once it lands, instead of replacing an unrelated loading state.
   if (loading) {
     return (
-      <main className="relative mx-auto w-full max-w-[390px] md:max-w-[680px]">
-        <section className="flex h-dvh flex-col bg-background px-5 pb-8 pt-16">
-          <button
-            onClick={() => router.back()}
-            className="absolute left-4 top-4 z-20 rounded-full bg-[#EADFCE] p-2.5 text-[#3A2A1F]"
-          >
-            <ArrowLeft size={18} />
-          </button>
+      <SubPageShell>
+        <main className="relative mx-auto h-full w-full max-w-[390px] md:max-w-[680px]">
+          <section className="flex h-full flex-col bg-background px-5 pb-8 pt-16">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="absolute left-4 top-4 z-20 rounded-full bg-[#EADFCE] p-2.5 text-[#3A2A1F]"
+            >
+              <ArrowLeft size={18} />
+            </button>
 
-          <Skeleton className="aspect-[4/3] w-full rounded-[24px] bg-[#D9CCBB]/60" />
+            <Skeleton className="aspect-[4/3] w-full rounded-[24px] bg-[#D9CCBB]/60" />
 
-          <div className="mt-5 flex flex-1 flex-col">
-            <Skeleton className="h-7 w-3/4 bg-[#EADFCE]" />
-            <Skeleton className="mt-2 h-4 w-1/2 bg-[#EADFCE]" />
-            <div className="mt-4 flex gap-2">
-              <Skeleton className="h-9 w-28 rounded-full bg-[#EADFCE]" />
-              <Skeleton className="h-9 w-24 rounded-full bg-[#EADFCE]" />
+            <div className="mt-5 flex flex-1 flex-col">
+              <Skeleton className="h-7 w-3/4 bg-[#EADFCE]" />
+              <Skeleton className="mt-2 h-4 w-1/2 bg-[#EADFCE]" />
+              <div className="mt-4 flex gap-2">
+                <Skeleton className="h-9 w-28 rounded-full bg-[#EADFCE]" />
+                <Skeleton className="h-9 w-24 rounded-full bg-[#EADFCE]" />
+              </div>
+              <div className="mt-4 space-y-2">
+                <Skeleton className="h-4 w-full bg-[#EADFCE]" />
+                <Skeleton className="h-4 w-5/6 bg-[#EADFCE]" />
+              </div>
             </div>
-            <div className="mt-4 space-y-2">
-              <Skeleton className="h-4 w-full bg-[#EADFCE]" />
-              <Skeleton className="h-4 w-5/6 bg-[#EADFCE]" />
-            </div>
-          </div>
-        </section>
-      </main>
+          </section>
+        </main>
+      </SubPageShell>
     );
   }
 
   if (!recipe) {
     return (
-      <main className="mx-auto flex h-dvh w-full max-w-[390px] flex-col items-center justify-center gap-4 bg-background md:max-w-[680px]">
-        <p className="text-[#6F5B4B]">Recipe not found</p>
-        <button onClick={() => router.back()} className="text-sm text-[#5FA66B] underline">
-          Go back
-        </button>
-      </main>
+      <SubPageShell>
+        <main className="mx-auto flex h-full w-full max-w-[390px] flex-col items-center justify-center gap-4 bg-background md:max-w-[680px]">
+          <p className="text-[#6F5B4B]">Recipe not found</p>
+          <button type="button" onClick={() => router.push("/dashboard")} className="text-sm text-[#5FA66B] underline">
+            Go back
+          </button>
+        </main>
+      </SubPageShell>
     );
   }
 
-  return (
-    <main className="relative mx-auto w-full max-w-[390px] md:max-w-[680px]">
-      {/* Scroll-mode toggle — fixed top-right, very subtle */}
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-50 mx-auto flex max-w-[390px] justify-end p-4 md:max-w-[680px]">
-        <button
-          onClick={() => setSmoothMode((m) => !m)}
-          aria-label={smoothMode ? "Switch to snap scroll" : "Switch to smooth scroll"}
-          className={`pointer-events-auto rounded-full p-2.5 backdrop-blur-sm transition-all duration-200 ${
-            smoothMode ? "bg-[#7CB342]/70 text-white" : "bg-black/15 text-white/80"
-          }`}
-        >
-          {smoothMode ? <Layers size={15} /> : <AlignJustify size={15} />}
-        </button>
-      </div>
+  const isCompleted = recipe.progress.status === "completed" || justCompleted;
 
+  return (
+    <SubPageShell>
+      <main className="relative mx-auto h-full w-full max-w-[390px] md:max-w-[680px]">
       {/* Snap-scroll container */}
       <div
         ref={containerRef}
-        className="h-dvh overflow-y-scroll"
-        style={{
-          scrollSnapType: "y mandatory",
-          scrollBehavior: smoothMode ? "smooth" : "auto",
-        }}
+        className="h-full overflow-y-scroll"
+        style={{ scrollSnapType: "y mandatory" }}
       >
         {/* ── Section 1: Overview ── */}
         <section
-          className="flex h-dvh flex-col bg-background px-5 pb-8 pt-16"
+          className="flex h-full flex-col bg-background px-5 pb-8 pt-16"
           style={{ scrollSnapAlign: "start" }}
         >
           <button
-            onClick={() => router.back()}
+            type="button"
+            onClick={() => router.push("/dashboard")}
             className="absolute left-4 top-4 z-20 rounded-full bg-[#EADFCE] p-2.5 text-[#3A2A1F]"
           >
             <ArrowLeft size={18} />
@@ -371,7 +360,7 @@ export default function RecipePage() {
         {/* ── Ingredients Section ── */}
         {recipe.ingredients.length > 0 && (
           <section
-            className="flex h-dvh flex-col bg-background px-5 pb-8 pt-14"
+            className="flex h-full flex-col bg-background px-5 pb-8 pt-14"
             style={{ scrollSnapAlign: "start" }}
           >
             <p className="text-xs font-semibold uppercase tracking-widest text-[#A89080]">
@@ -433,7 +422,7 @@ export default function RecipePage() {
           return (
             <section
               key={step.id}
-              className="flex h-dvh flex-col bg-background px-5 pb-8 pt-10"
+              className="flex h-full flex-col bg-background px-5 pb-8 pt-10"
               style={{ scrollSnapAlign: "start" }}
             >
               {/* Header row: step label + progress dots */}
@@ -483,7 +472,7 @@ export default function RecipePage() {
 
         {/* ── Final Section: Complete ── */}
         <section
-          className="flex h-dvh flex-col items-center justify-center bg-background px-8 pb-10 pt-8"
+          className="flex h-full flex-col items-center justify-center bg-background px-8 pb-10 pt-8"
           style={{ scrollSnapAlign: "start" }}
         >
           {/* Hero image */}
@@ -509,20 +498,31 @@ export default function RecipePage() {
             <p className="mt-1 text-center text-base text-[#6F5B4B]">{recipe.headline}</p>
           )}
 
-          {recipe.progress.status === "completed" ? (
-            <div className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-[#E7F6DF] py-4 font-semibold text-[#4a8a55]">
-              <Check size={20} />
-              Dinner done!
-            </div>
+          {isCompleted ? (
+            <>
+              <div className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-[#E7F6DF] py-4 font-semibold text-[#4a8a55]">
+                <Check size={20} />
+                Dinner done!
+              </div>
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard")}
+                className="mt-3 w-full rounded-full bg-[#3A2A1F] py-4 font-semibold text-white transition-all active:scale-[0.97]"
+              >
+                Back to dashboard
+              </button>
+            </>
           ) : (
             <button
-              onClick={handleComplete}
+              type="button"
+              onClick={() => void handleComplete()}
               className="mt-8 w-full rounded-full bg-[#7CB342] py-4 font-semibold text-white transition-all active:scale-[0.97]"
             >
               Mark as complete
             </button>
           )}
           <button
+            type="button"
             onClick={scrollToTop}
             className="mt-4 flex items-center gap-1.5 text-sm text-[#6F5B4B]"
           >
@@ -531,6 +531,7 @@ export default function RecipePage() {
           </button>
         </section>
       </div>
-    </main>
+      </main>
+    </SubPageShell>
   );
 }

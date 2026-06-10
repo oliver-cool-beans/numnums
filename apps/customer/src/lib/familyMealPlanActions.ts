@@ -144,41 +144,7 @@ export async function suggestRecipeSwap(params: {
   if (error) throw error;
 }
 
-export async function approveRecipeSwapSuggestion(suggestionId: string): Promise<void> {
-  const { error } = await supabase.rpc("approve_recipe_swap_suggestion", {
-    p_suggestion_id: suggestionId,
-  });
-  if (error) throw error;
-}
-
-export async function dismissRecipeSwapSuggestion(suggestionId: string): Promise<void> {
-  const { error } = await supabase
-    .from("recipe_swap_suggestions")
-    .update({ status: "dismissed" })
-    .eq("id", suggestionId);
-
-  if (error) throw error;
-}
-
-// Owner-only direct swap: replaces a single day's recipe on the owner's plan
-// with no suggestion/approval step, then re-persists the week so the shopping
-// list stays in sync (same regeneration path a full re-plan uses).
-export async function switchMealPlanRecipe(
-  ownerId: string,
-  week: number,
-  year: number,
-  day: Weekday,
-  recipeId: string,
-): Promise<void> {
-  const { error } = await supabase
-    .from("user_meal_plans")
-    .update({ [dayColumn(day)]: recipeId })
-    .eq("user_id", ownerId)
-    .eq("week_number", week)
-    .eq("year", year);
-
-  if (error) throw error;
-
+async function refreshShoppingListForWeek(ownerId: string, week: number, year: number): Promise<void> {
   const { data: planRow, error: planError } = await supabase
     .from("user_meal_plans")
     .select("*")
@@ -213,4 +179,49 @@ export async function switchMealPlanRecipe(
     .filter((m): m is ReadyMeal => Boolean(m.recipe));
 
   await persistWeekPlan(ownerId, meals, week, year);
+}
+
+export async function approveRecipeSwapSuggestion(
+  suggestionId: string,
+  ownerId: string,
+  week: number,
+  year: number,
+): Promise<void> {
+  const { error } = await supabase.rpc("approve_recipe_swap_suggestion", {
+    p_suggestion_id: suggestionId,
+  });
+  if (error) throw error;
+
+  await refreshShoppingListForWeek(ownerId, week, year);
+}
+
+export async function dismissRecipeSwapSuggestion(suggestionId: string): Promise<void> {
+  const { error } = await supabase
+    .from("recipe_swap_suggestions")
+    .update({ status: "dismissed" })
+    .eq("id", suggestionId);
+
+  if (error) throw error;
+}
+
+// Owner-only direct swap: replaces a single day's recipe on the owner's plan
+// with no suggestion/approval step, then re-persists the week so the shopping
+// list stays in sync (same regeneration path a full re-plan uses).
+export async function switchMealPlanRecipe(
+  ownerId: string,
+  week: number,
+  year: number,
+  day: Weekday,
+  recipeId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("user_meal_plans")
+    .update({ [dayColumn(day)]: recipeId })
+    .eq("user_id", ownerId)
+    .eq("week_number", week)
+    .eq("year", year);
+
+  if (error) throw error;
+
+  await refreshShoppingListForWeek(ownerId, week, year);
 }

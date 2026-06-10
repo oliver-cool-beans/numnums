@@ -5,6 +5,7 @@ import { getWeekAtOffset } from "@/lib/utils";
 import type { OnboardingRecipe, Weekday } from "@/lib/recipeSchedule";
 import { fetchWeekRecipeIds } from "@/lib/mealPlanActions";
 import { switchMealPlanRecipe } from "@/lib/familyMealPlanActions";
+import { toast } from "@/lib/toast";
 
 export type RecipeSwapTarget = {
   day: Weekday;
@@ -19,10 +20,8 @@ export function useRecipeSwap(userId: string | undefined, onSwapped: () => void)
   const [target, setTarget] = useState<RecipeSwapTarget | null>(null);
   const [recentRecipeIds, setRecentRecipeIds] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const open = useCallback((next: RecipeSwapTarget) => {
-    setError(null);
     setTarget(next);
   }, []);
 
@@ -44,13 +43,12 @@ export function useRecipeSwap(userId: string | undefined, onSwapped: () => void)
     async (recipe: OnboardingRecipe) => {
       if (!target || !userId) return;
       setPending(true);
-      setError(null);
       try {
         await switchMealPlanRecipe(userId, target.week, target.year, target.day, recipe.id);
         setTarget(null);
         onSwapped();
       } catch (swapError) {
-        setError(swapError instanceof Error ? swapError.message : "That swap didn't go through. Please try again.");
+        toast.error(swapError instanceof Error ? swapError.message : "That swap didn't go through. Please try again.");
       } finally {
         setPending(false);
       }
@@ -58,5 +56,5 @@ export function useRecipeSwap(userId: string | undefined, onSwapped: () => void)
     [target, userId, onSwapped],
   );
 
-  return { target, recentRecipeIds, pending, error, open, close, handleSelect };
+  return { target, recentRecipeIds, pending, open, close, handleSelect };
 }

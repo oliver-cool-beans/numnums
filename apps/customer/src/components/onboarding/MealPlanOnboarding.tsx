@@ -32,6 +32,7 @@ type ReadyState = {
 type MealPlanOnboardingProps = {
   userId: string;
   onCancel: () => void;
+  onFinish?: () => void;
   targetWeek?: number;
   targetYear?: number;
 };
@@ -533,7 +534,7 @@ function ReadyStepCard({
         className="mt-4 h-11 w-full rounded-full bg-[#7CB342] text-base font-semibold text-white hover:bg-[#689F38]"
         onClick={onFinish}
       >
-        Looks good!
+        Build my shopping list
       </Button>
     </section>
   );
@@ -608,7 +609,7 @@ function StepContent({
   }
 }
 
-export function MealPlanOnboarding({ userId, onCancel, targetWeek, targetYear }: MealPlanOnboardingProps) {
+export function MealPlanOnboarding({ userId, onCancel, onFinish, targetWeek, targetYear }: MealPlanOnboardingProps) {
   const { week: currentWeek, year: currentYear } = getCurrentWeek();
   const effectiveWeek = targetWeek ?? currentWeek;
   const effectiveYear = targetYear ?? currentYear;
@@ -625,7 +626,14 @@ export function MealPlanOnboarding({ userId, onCancel, targetWeek, targetYear }:
   const [selectedRequirements, setSelectedRequirements] = useState<string[]>([]);
   // Re-plans already have saved dietary preferences (set during first-time onboarding)
   // and shouldn't make the user pick them again every time they replan a week.
-  const [step, setStep] = useState<OnboardingStep>(targetWeek !== undefined ? "recipes" : "diet");
+  const [step, setStep] = useState<OnboardingStep>(() => {
+    if (targetWeek !== undefined) return "recipes";
+    const saved = globalThis.window === undefined
+      ? null
+      : globalThis.localStorage.getItem(`numnums:onboarding:step:${userId}`);
+    if (saved === "recipes" || saved === "days") return saved;
+    return "diet";
+  });
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [recipePage, setRecipePage] = useState(0);
   const [selectedDays, setSelectedDays] = useState<Weekday[]>(() =>
@@ -653,6 +661,11 @@ export function MealPlanOnboarding({ userId, onCancel, targetWeek, targetYear }:
     void load();
     return () => { isMounted = false; };
   }, []);
+
+  useEffect(() => {
+    if (targetWeek !== undefined || step === "ready") return;
+    globalThis.localStorage.setItem(`numnums:onboarding:step:${userId}`, step);
+  }, [step, userId, targetWeek]);
 
   useEffect(() => {
     let isMounted = true;
@@ -724,6 +737,7 @@ export function MealPlanOnboarding({ userId, onCancel, targetWeek, targetYear }:
       await persistWeekPlan(userId, plannedMeals, effectiveWeek, effectiveYear);
       await saveDietaryPreferences(userId, selectedRequirements);
       setReadyState({ meals: plannedMeals, weekLabel });
+      globalThis.localStorage.removeItem(`numnums:onboarding:step:${userId}`);
       setStep("ready");
     } catch (buildError) {
       setError(buildError instanceof Error ? buildError.message : "We couldn't build your week yet.");
@@ -768,7 +782,7 @@ export function MealPlanOnboarding({ userId, onCancel, targetWeek, targetYear }:
           onContinueToDays={() => setStep("days")}
           onToggleDay={handleToggleDay}
           onBuildWeek={() => void handleBuildWeek()}
-          onFinish={onCancel}
+          onFinish={onFinish ?? onCancel}
         />
       )}
     </div>

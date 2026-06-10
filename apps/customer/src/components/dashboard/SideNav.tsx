@@ -1,20 +1,22 @@
 "use client";
 
-import { CalendarDays, Heart, LogOut, ShoppingCart } from "lucide-react";
+import { CalendarDays, LogOut, ShoppingCart, UserRound, Users, Home } from "lucide-react";
 import type { AuthUser } from "@/lib/auth-context";
 
 type SideNavProps = {
-  activeTab?: "week" | "list" | "favorites" | "profile";
-  onTabChange?: (tab: "week" | "list" | "favorites" | "profile") => void;
+  activeTab?: "week" | "list" | "profile";
+  onTabChange?: (tab: "week" | "list" | "profile") => void;
+  onInviteFriends?: () => void;
+  onManageGroups?: () => void;
   user?: AuthUser | null;
   onSignOut?: () => void;
 };
 
-export function SideNav({ activeTab = "week", onTabChange, user, onSignOut }: SideNavProps) {
+export function SideNav({ activeTab = "week", onTabChange, onInviteFriends, onManageGroups, user, onSignOut }: SideNavProps) {
   const tabs = [
     { id: "week", label: "My Week", icon: CalendarDays },
     { id: "list", label: "List", icon: ShoppingCart },
-    { id: "favorites", label: "Favorites", icon: Heart },
+    { id: "profile", label: "Profile", icon: UserRound },
   ] as const;
 
   return (
@@ -42,6 +44,26 @@ export function SideNav({ activeTab = "week", onTabChange, user, onSignOut }: Si
             </button>
           );
         })}
+
+        <div className="my-2 border-t border-[#E7D9CD]" />
+
+        <button
+          onClick={onInviteFriends}
+          className="flex items-center gap-3 rounded-[14px] px-3 py-3 text-left text-[#9E8B7E] transition-all hover:bg-[#FAF5EE] hover:text-[#6F5B4B]"
+          type="button"
+        >
+          <Users className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <span className="text-sm font-medium">Friends</span>
+        </button>
+
+        <button
+          onClick={onManageGroups}
+          className="flex items-center gap-3 rounded-[14px] px-3 py-3 text-left text-[#9E8B7E] transition-all hover:bg-[#FAF5EE] hover:text-[#6F5B4B]"
+          type="button"
+        >
+          <Home className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <span className="text-sm font-medium">Family</span>
+        </button>
       </div>
 
       {/* User section pinned to bottom */}
