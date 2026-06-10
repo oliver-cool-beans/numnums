@@ -98,11 +98,12 @@ async function trackInviteSent(record: Row): Promise<void> {
   if (!email || !url || !inviterId || (kind !== "friend" && kind !== "family")) return;
 
   const { data: inviter } = await supabase.from("users").select("name").eq("id", inviterId).maybeSingle();
-  const idempotencyKey = typeof record.id === "string" ? `Invite Sent:${record.id}` : undefined;
+  const eventName = kind === "family" ? "Family Invite Sent" : "Friend Invite Sent";
+  const idempotencyKey = typeof record.id === "string" ? `${eventName}:${record.id}` : undefined;
   await send(
     email,
-    "Invite Sent",
-    { type: kind, url, inviterName: firstName(inviter?.name, "Someone") },
+    eventName,
+    { url, inviterName: firstName(inviter?.name, "Someone") },
     idempotencyKey,
   );
 }

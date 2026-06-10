@@ -21,6 +21,13 @@
     "unit": "ml"
   },
   {
+    "ingredient_handle": "youjuice-tropical-tango",
+    "source_quantity": 1,
+    "source_unit": "bottle",
+    "quantity": 250,
+    "unit": "ml"
+  },
+  {
     "ingredient_handle": "dried-herbs",
     "source_quantity": 1,
     "source_unit": "sachet",
@@ -46,6 +53,153 @@
     "source_quantity": 1,
     "source_unit": "sachet",
     "quantity": 0.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "all-american-spice-blend",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "asian-bbq-seasoning",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "aussie-spice-blend",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "chermoula-spice-blend",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "classic-roast-seasoning",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "crispy-shallots",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 2,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "dried-oregano",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1,
+    "unit": "tsp"
+  },
+  {
+    "ingredient_handle": "garlic-herb-seasoning",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "garlic-seasoning",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1,
+    "unit": "tsp"
+  },
+  {
+    "ingredient_handle": "italian-herbs",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1,
+    "unit": "tsp"
+  },
+  {
+    "ingredient_handle": "mediterranean-seasoning",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "mexican-fiesta-spice-blend",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "mild-caribbean-jerk-seasoning",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "nans-special-seasoning",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "savoury-seasoning",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "sesame-seeds",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "spicy-taco-seasoning",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "sweet-soy-seasoning",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "teriyaki-seasoning",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "tex-mex-spice-blend",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "tomato-herb-seasoning",
+    "source_quantity": 1,
+    "source_unit": "sachet",
+    "quantity": 1.5,
     "unit": "tbs"
   },
   {
@@ -147,6 +301,328 @@
     "unit": "g"
   },
   {
+    "ingredient_handle": "basil-pesto",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "black-beans",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 400,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "cannellini-beans",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 400,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "chickpeas",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 400,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "couscous",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 75,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "cream-cheese",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 60,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "crushed-peanuts",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 30,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "curry-spice-blend",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 1.5,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "dill-parsley-mayonnaise",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "dry-pancake-mix",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 100,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "egg-noodles",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 80,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "fetta-cubes",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 80,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "fettuccine",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 80,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "fine-breadcrumbs",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 30,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "flaked-almonds",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 30,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "ginger-paste",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 15,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "gravy-granules",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 15,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "greek-style-yoghurt",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 150,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "green-beans",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 150,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "hoisin-sauce",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "ml"
+  },
+  {
+    "ingredient_handle": "japanese-dressing",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "ml"
+  },
+  {
+    "ingredient_handle": "kecap-manis",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "ml"
+  },
+  {
+    "ingredient_handle": "lemon-curd",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "lentils",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 400,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "light-cooking-cream",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 150,
+    "unit": "ml"
+  },
+  {
+    "ingredient_handle": "light-sour-cream",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "oyster-sauce",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "ml"
+  },
+  {
+    "ingredient_handle": "panko-breadcrumbs",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 30,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "parmesan-cheese",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 30,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "parsley",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 10,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "penne",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 80,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "pine-nuts",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 30,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "red-kidney-beans",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 400,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "risoni",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 80,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "rocket-leaves",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 60,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "rosemary",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 5,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "shredded-cabbage-mix",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 150,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "slaw-mix",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 150,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "sliced-mushrooms",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 100,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "smokey-aioli",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "snacking-tomatoes",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 200,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "spaghetti",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 80,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "spinach-rocket-mix",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 60,
+    "unit": "g"
+  },
+  {
+    "ingredient_handle": "sriracha",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 30,
+    "unit": "ml"
+  },
+  {
+    "ingredient_handle": "sweet-chilli-sauce",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 40,
+    "unit": "ml"
+  },
+  {
+    "ingredient_handle": "udon-noodles",
+    "source_quantity": 1,
+    "source_unit": "packet",
+    "quantity": 180,
+    "unit": "g"
+  },
+  {
     "ingredient_handle": "sweetcorn",
     "source_quantity": 1,
     "source_unit": "tin",
@@ -168,11 +644,60 @@
     "unit": "ml"
   },
   {
+    "ingredient_handle": "pineapple-slices",
+    "source_quantity": 1,
+    "source_unit": "tin",
+    "quantity": 400,
+    "unit": "g"
+  },
+  {
     "ingredient_handle": "asian-greens",
     "source_quantity": 1,
     "source_unit": "bunch",
     "quantity": 150,
     "unit": "g"
+  },
+  {
+    "ingredient_handle": "balsamic-vinegar",
+    "source_quantity": 1,
+    "source_unit": "drizzle",
+    "quantity": 1,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "vinegar",
+    "source_quantity": 1,
+    "source_unit": "drizzle",
+    "quantity": 1,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "vinegar-balsamic-or-white-wine-pantry",
+    "source_quantity": 1,
+    "source_unit": "drizzle",
+    "quantity": 1,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "vinegar-white-wine-or-rice-wine",
+    "source_quantity": 1,
+    "source_unit": "drizzle",
+    "quantity": 1,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "white-wine-vinegar",
+    "source_quantity": 1,
+    "source_unit": "drizzle",
+    "quantity": 1,
+    "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "white-wine-vinegar-pantry",
+    "source_quantity": 1,
+    "source_unit": "drizzle",
+    "quantity": 1,
+    "unit": "tbs"
   },
   {
     "ingredient_handle": "olive-oil",

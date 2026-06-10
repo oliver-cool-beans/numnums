@@ -55,7 +55,7 @@ export function usePendingInvites(userId: string | undefined, kind: "friend" | "
     async (inviteId: string) => {
       const { error } = await supabase
         .from("invites")
-        .update({ status: "revoked" })
+        .delete()
         .eq("id", inviteId)
         .eq("status", "pending");
 
