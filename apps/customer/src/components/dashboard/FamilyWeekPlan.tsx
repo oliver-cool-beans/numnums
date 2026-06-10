@@ -49,7 +49,7 @@ function SuggestionPanel({
   suggestion: SwapSuggestion;
   isOwner: boolean;
   isPending: boolean;
-  pendingAction: PendingState["action"] | undefined;
+  pendingAction: NonNullable<PendingState>["action"] | undefined;
   onApprove: () => void;
   onDismiss: () => void;
 }) {
@@ -101,7 +101,7 @@ function DayActions({
   entry: { day: Weekday; recipe: { id: string } | null | undefined };
   isOwner: boolean;
   isPending: boolean;
-  pendingAction: PendingState["action"] | undefined;
+  pendingAction: NonNullable<PendingState>["action"] | undefined;
   onSuggest: () => void;
   onSwitch: () => void;
 }) {
