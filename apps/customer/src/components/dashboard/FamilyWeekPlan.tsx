@@ -16,6 +16,7 @@ import {
   fetchFamilyWeekPlan,
   suggestRecipeSwap,
   switchMealPlanRecipe,
+  voteOnRecipeSwapSuggestion,
 } from "@/lib/familyMealPlanActions";
 import { fetchWeekRecipeIds } from "@/lib/mealPlanActions";
 import { RecipeSwapPicker } from "@/components/dashboard/RecipeSwapPicker";
@@ -36,23 +37,32 @@ type PickerState = {
   currentRecipeId: string | null;
 };
 
-type PendingState = { day: Weekday; action: "select" | "approve" | "dismiss" } | null;
+type PendingAction = "select" | "approve" | "dismiss" | "vote-yes" | "vote-no";
+type PendingState = { day: Weekday; action: PendingAction } | null;
 
 function SuggestionPanel({
   suggestion,
   isOwner,
+  isOwnSuggestion,
   isPending,
   pendingAction,
   onApprove,
   onDismiss,
+  onVoteYes,
+  onVoteNo,
 }: {
   suggestion: SwapSuggestion;
   isOwner: boolean;
+  isOwnSuggestion: boolean;
   isPending: boolean;
-  pendingAction: NonNullable<PendingState>["action"] | undefined;
+  pendingAction: PendingAction | undefined;
   onApprove: () => void;
   onDismiss: () => void;
+  onVoteYes: () => void;
+  onVoteNo: () => void;
 }) {
+  const hasVotes = suggestion.yesVotes > 0 || suggestion.noVotes > 0;
+
   return (
     <div className="mt-2.5 rounded-[14px] bg-[#FFF7E8] px-3 py-2.5">
       <p className="text-xs leading-5 text-[#6F5B4B]">
@@ -60,8 +70,17 @@ function SuggestionPanel({
         suggested swapping in{" "}
         <span className="font-semibold text-[#3A2A1F]">{suggestion.proposedRecipe.name}</span>
       </p>
-      {isOwner ? (
-        <div className="mt-2 flex gap-2">
+      {hasVotes && (
+        <p className="mt-1 text-[0.68rem] text-[#9E8B7E]">
+          {suggestion.yesVotes} yes · {suggestion.noVotes} no
+        </p>
+      )}
+      {isOwnSuggestion ? (
+        <p className="mt-1.5 text-[0.68rem] font-medium uppercase tracking-wide text-[#B08D52]">
+          Waiting for votes
+        </p>
+      ) : isOwner ? (
+        <div className="mt-2 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={onApprove}
@@ -82,9 +101,26 @@ function SuggestionPanel({
           </button>
         </div>
       ) : (
-        <p className="mt-1.5 text-[0.68rem] font-medium uppercase tracking-wide text-[#B08D52]">
-          Pending owner review
-        </p>
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            onClick={onVoteYes}
+            disabled={isPending}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#7CB342] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#689F38] disabled:opacity-50"
+          >
+            {isPending && pendingAction === "vote-yes" ? <Loader2 className="size-3.5 animate-spin" /> : <ThumbsUp className="size-3.5" />}
+            Yes
+          </button>
+          <button
+            type="button"
+            onClick={onVoteNo}
+            disabled={isPending}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#D9CCBB] bg-white px-3 py-1.5 text-xs font-semibold text-[#3A2A1F] transition-colors hover:bg-[#F5EDE0] disabled:opacity-50"
+          >
+            {isPending && pendingAction === "vote-no" ? <Loader2 className="size-3.5 animate-spin" /> : <ThumbsDown className="size-3.5" />}
+            No
+          </button>
+        </div>
       )}
     </div>
   );
@@ -208,6 +244,18 @@ export function FamilyWeekPlan({ familyId, ownerId, ownerName, currentUserId, is
     }
   };
 
+  const handleVote = async (suggestion: SwapSuggestion, yes: boolean) => {
+    setPending({ day: suggestion.day, action: yes ? "vote-yes" : "vote-no" });
+    try {
+      await voteOnRecipeSwapSuggestion(suggestion.id, yes);
+      await refresh();
+    } catch (actionError) {
+      toast.error(actionError instanceof Error ? actionError.message : "Couldn't record your vote.");
+    } finally {
+      setPending(null);
+    }
+  };
+
   const handleApprove = async (suggestion: SwapSuggestion) => {
     setPending({ day: suggestion.day, action: "approve" });
     try {
@@ -286,10 +334,13 @@ export function FamilyWeekPlan({ familyId, ownerId, ownerName, currentUserId, is
                 <SuggestionPanel
                   suggestion={suggestion}
                   isOwner={isOwner}
+                  isOwnSuggestion={suggestion.suggestedByUserId === currentUserId}
                   isPending={isPending}
                   pendingAction={pending?.action}
                   onApprove={() => void handleApprove(suggestion)}
                   onDismiss={() => void handleDismiss(suggestion)}
+                  onVoteYes={() => void handleVote(suggestion, true)}
+                  onVoteNo={() => void handleVote(suggestion, false)}
                 />
               ) : (
                 <DayActions

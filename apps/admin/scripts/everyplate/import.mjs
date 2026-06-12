@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,6 +26,9 @@ const DEFAULT_INPUT_PATH = resolveRepoPath('src', 'scripts', 'output', 'ep-recip
 const OVERRIDES_PATH = path.resolve(__dirname, 'ingredient-overrides.json');
 
 const ALLOWED_UNITS = new Set(['g', 'ml', 'l', 'tbs', 'tsp', 'cup']);
+const UNRECOGNISED_UNITS_LOG = path.resolve(__dirname, 'unrecognised-units.log');
+
+const unrecognisedUnits = new Set();
 
 function buildOverrideLookup(overrides) {
   const lookup = new Map();
@@ -68,6 +72,7 @@ function validateUnit(handle, unit) {
   if (ALLOWED_UNITS.has(unit)) return true;
 
   console.warn(`[import-everyplate] Unrecognised unit "${unit}" for ingredient "${handle}" — no override found, setting unit to null`);
+  unrecognisedUnits.add(`${unit}\t${handle}`);
   return false;
 }
 
@@ -526,6 +531,12 @@ async function main() {
       recordsInserted: totals.recipesInserted,
       recordsUpdated: totals.recipesUpdated
     });
+
+    if (unrecognisedUnits.size > 0) {
+      const lines = [...unrecognisedUnits].sort();
+      await fs.writeFile(UNRECOGNISED_UNITS_LOG, `unit\tingredient\n${lines.join('\n')}\n`);
+      console.error(`[import-everyplate] ${unrecognisedUnits.size} unrecognised unit(s) logged to ${UNRECOGNISED_UNITS_LOG}`);
+    }
 
     console.log(
       formatSummary({

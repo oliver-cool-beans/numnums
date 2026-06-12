@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, Shuffle, X } from "lucide-react";
+import { CalendarDays, Loader2, Shuffle, X } from "lucide-react";
 import {
   useUserMealPlan,
   useTodayRecipe,
@@ -12,6 +12,7 @@ import {
   useFriendsToday,
   useRecipeSwap,
   useFamilyContext,
+  usePendingSwapCount,
 } from "@/lib/hooks";
 import {
   Header,
@@ -94,6 +95,41 @@ function DayActionSheet({
   );
 }
 
+// ─── Pending swaps banner (owners only) ──────────────────────────────────────
+
+function PendingSwapsBanner({
+  count,
+  onReview,
+  className,
+}: {
+  count: number;
+  onReview: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={className ?? "mx-5 mb-4"}>
+      <button
+        type="button"
+        onClick={onReview}
+        className="flex w-full items-center justify-between rounded-[20px] border border-[#F0E8DE] bg-[#FFF7E8] px-4 py-3 text-left transition-colors hover:bg-[#FFF0CC]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFE7A3]">
+            <Shuffle aria-hidden="true" className="h-4 w-4 text-[#8B7355]" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-[#3A2A1F]">
+              {count === 1 ? "1 swap suggestion" : `${count} swap suggestions`} pending
+            </p>
+            <p className="text-xs text-[#6F5B4B]">Tap to review in your group</p>
+          </div>
+        </div>
+        <span className="flex-shrink-0 text-xs font-semibold text-[#B08D52]">Review</span>
+      </button>
+    </div>
+  );
+}
+
 // ─── Plan Ahead card ─────────────────────────────────────────────────────────
 
 
@@ -106,6 +142,13 @@ function PlanAheadCard({
   onShopNextWeek: () => void;
   className?: string;
 }) {
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleShopNextWeek = () => {
+    setIsNavigating(true);
+    onShopNextWeek();
+  };
+
   return (
     <div className={className ?? "mx-5 mb-4 overflow-hidden rounded-[20px] bg-white shadow-sm"}>
       <button
@@ -128,12 +171,14 @@ function PlanAheadCard({
       </button>
       <button
         type="button"
-        onClick={onShopNextWeek}
-        className="block w-full border-t border-[#F0E8DE] px-4 py-3 text-left transition-colors hover:bg-[#FAF7F3]"
+        onClick={handleShopNextWeek}
+        disabled={isNavigating}
+        className="flex w-full items-center gap-2 border-t border-[#F0E8DE] px-4 py-3 text-left transition-colors hover:bg-[#FAF7F3] disabled:opacity-50"
       >
-        <span className="text-xs font-medium text-[#7CB342] underline underline-offset-2">
-          Shop next week →
-        </span>
+        {isNavigating
+          ? <Loader2 className="size-3.5 animate-spin text-[#7CB342]" />
+          : <span className="text-xs font-medium text-[#7CB342] underline underline-offset-2">Shop next week →</span>
+        }
       </button>
     </div>
   );
@@ -193,6 +238,10 @@ function DashboardInner() {
   });
 
   const familyContext = useFamilyContext(user?.id);
+  const pendingSwapCount = usePendingSwapCount(
+    familyContext?.familyId,
+    familyContext?.isOwner ?? false,
+  );
 
   const getTomorrowRecipe = (): { name: string; id: string } | null => {
     if (!mealPlan) return null;
@@ -350,6 +399,12 @@ function DashboardInner() {
                 onDismiss={() => setNotificationPrompt(null)}
               />
             )}
+            {familyContext?.isOwner && pendingSwapCount > 0 && (
+              <PendingSwapsBanner
+                count={pendingSwapCount}
+                onReview={() => router.push("/dashboard/groups")}
+              />
+            )}
             <div className="relative z-10">
               <CurrentRecipeCard
                 recipe={todayRecipe || null}
@@ -435,6 +490,13 @@ function DashboardInner() {
               title={notificationPrompt.title}
               message={notificationPrompt.message}
               onDismiss={() => setNotificationPrompt(null)}
+            />
+          )}
+          {familyContext?.isOwner && pendingSwapCount > 0 && (
+            <PendingSwapsBanner
+              className="mb-5"
+              count={pendingSwapCount}
+              onReview={() => router.push("/dashboard/groups")}
             />
           )}
 

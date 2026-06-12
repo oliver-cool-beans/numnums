@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { ShoppingList } from "@/lib/hooks";
-import { Check, ShoppingCart } from "lucide-react";
+import { Check, Loader2, ShoppingCart } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type ShoppingListCardProps = {
@@ -36,11 +37,20 @@ function DraftCard({
   isLoading: boolean | undefined;
   onReviewList: (() => void) | undefined;
 }) {
+  const [isNavigating, setIsNavigating] = useState(false);
   const noListYet = !isDraft && !hasMealPlan;
+  const pending = isNavigating || isLoading;
+
+  const handleClick = () => {
+    if (!onReviewList || noListYet) return;
+    setIsNavigating(true);
+    onReviewList();
+  };
+
   return (
     <button
-      onClick={onReviewList}
-      disabled={isLoading || noListYet}
+      onClick={handleClick}
+      disabled={pending || noListYet}
       className="flex w-full items-center justify-between rounded-[20px] bg-[#FFE7A3] p-4 text-left transition-colors hover:bg-[#FFE093] disabled:opacity-50"
       type="button"
     >
@@ -53,7 +63,9 @@ function DraftCard({
           <p className="text-xs text-[#8B7355]">{draftLabel(isDraft, hasMealPlan)}</p>
         </div>
       </div>
-      <span className="flex-shrink-0 text-sm font-semibold text-[#3A2A1F]">{draftCta(isDraft, hasMealPlan)}</span>
+      <span className="flex-shrink-0 text-sm font-semibold text-[#3A2A1F]">
+        {isNavigating ? <Loader2 className="size-4 animate-spin" /> : draftCta(isDraft, hasMealPlan)}
+      </span>
     </button>
   );
 }
@@ -67,10 +79,18 @@ function ConfirmedCard({
   isLoading: boolean | undefined;
   onViewList: (() => void) | undefined;
 }) {
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleClick = () => {
+    if (!onViewList) return;
+    setIsNavigating(true);
+    onViewList();
+  };
+
   return (
     <button
-      onClick={onViewList}
-      disabled={isLoading}
+      onClick={handleClick}
+      disabled={isNavigating || isLoading}
       className="flex w-full items-center justify-between rounded-[20px] bg-[#FFE7A3] p-4 text-left transition-colors hover:bg-[#FFE093] disabled:opacity-50"
       type="button"
     >
@@ -87,7 +107,9 @@ function ConfirmedCard({
           </p>
         </div>
       </div>
-      <span className="flex-shrink-0 text-sm font-semibold text-[#3A2A1F]">View</span>
+      <span className="flex-shrink-0 text-sm font-semibold text-[#3A2A1F]">
+        {isNavigating ? <Loader2 className="size-4 animate-spin" /> : "View"}
+      </span>
     </button>
   );
 }

@@ -125,7 +125,9 @@ export function buildSchedule(
 ): ReadyMeal[] {
   const selectedIds = new Set(selectedRecipes.map((r) => r.id));
   const meals: ReadyMeal[] = [];
-  const scoredPool = [...allRecipes]
+  // Shuffle first so equal-scored recipes vary between generations
+  const shuffled = [...allRecipes].sort(() => Math.random() - 0.5);
+  const scoredPool = shuffled
     .filter((r) => !selectedIds.has(r.id))
     .sort(
       (a, b) =>

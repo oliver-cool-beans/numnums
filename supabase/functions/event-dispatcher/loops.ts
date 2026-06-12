@@ -19,8 +19,14 @@ type Resolver = (record: Row, oldRecord: Row | null) => Promise<void>;
  * truth, and the service-role client can read it directly.
  */
 async function getUserEmail(userId: string): Promise<string | null> {
-  const { data } = await supabase.auth.admin.getUserById(userId);
-  return data.user?.email ?? null;
+  const { data, error } = await supabase.auth.admin.getUserById(userId);
+  if (error) {
+    console.error(`[loops] getUserEmail failed for userId=${userId}`, error);
+    return null;
+  }
+  const email = data.user?.email ?? null;
+  if (!email) console.warn(`[loops] no email found for userId=${userId}`);
+  return email;
 }
 
 async function send(
@@ -47,8 +53,9 @@ async function send(
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`[event-dispatcher] loops event "${eventName}" failed (${response.status}): ${body}`);
+    throw new Error(`[loops] event "${eventName}" to ${email} failed (${response.status}): ${body}`);
   }
+  console.log(`[loops] sent event "${eventName}" to ${email}`);
 }
 
 /**
@@ -62,10 +69,19 @@ async function trackForUser(
   eventName: string,
   eventProperties?: Record<string, unknown>,
 ): Promise<void> {
-  if (!userId) return;
+  const rawId = typeof record.id === "string" || typeof record.id === "number" ? String(record.id) : "(no id)";
+  if (!userId) {
+    console.warn(`[loops] skipping "${eventName}" — no userId on record id=${rawId}`);
+    return;
+  }
   const email = await getUserEmail(userId);
-  if (!email) return;
+  if (!email) {
+    console.warn(`[loops] skipping "${eventName}" — no email for userId=${userId}`);
+    return;
+  }
   const idempotencyKey = typeof record.id === "string" ? `${eventName}:${record.id}` : undefined;
+  const keyLabel = idempotencyKey ? ` key=${idempotencyKey}` : "";
+  console.log(`[loops] dispatching "${eventName}" for userId=${userId}${keyLabel}`);
   await send(email, eventName, eventProperties, idempotencyKey);
 }
 
@@ -76,25 +92,47 @@ function statusChangedTo(record: Row, oldRecord: Row | null, status: string): bo
 async function trackRecipeProgress(record: Row, oldRecord: Row | null): Promise<void> {
   const status = record.status as string | undefined;
   const previousStatus = (oldRecord?.status as string | undefined) ?? "not_started";
-  if (status === previousStatus) return;
+  console.log(`[loops] trackRecipeProgress status=${status} previousStatus=${previousStatus}`);
+  if (status === previousStatus) {
+    console.log("[loops] trackRecipeProgress status unchanged, skipping");
+    return;
+  }
   const userId = record.user_id as string | undefined;
   if (status === "in_progress") await trackForUser(record, userId, "Recipe Started");
   else if (status === "completed") await trackForUser(record, userId, "Recipe Completed");
+  else console.log(`[loops] trackRecipeProgress untracked status="${status}", skipping`);
 }
 
 async function trackFamilyInviteAccepted(record: Row): Promise<void> {
   const familyId = record.family_id as string | undefined;
   const role = record.role as string | undefined;
-  if (!familyId || role === "owner") return;
+  console.log(`[loops] trackFamilyInviteAccepted familyId=${familyId} role=${role}`);
+  if (!familyId) {
+    console.warn("[loops] trackFamilyInviteAccepted skipping — no familyId");
+    return;
+  }
+  if (role === "owner") {
+    console.log("[loops] trackFamilyInviteAccepted skipping — inserting owner, not an accept");
+    return;
+  }
 
-  const { data: owner } = await supabase
+  const { data: owner, error } = await supabase
     .from("family_members")
     .select("user_id")
     .eq("family_id", familyId)
     .eq("role", "owner")
     .maybeSingle();
 
-  await trackForUser(record, owner?.user_id as string | undefined, "Invite Accepted", { type: "family" });
+  if (error) {
+    console.error(`[loops] trackFamilyInviteAccepted failed to fetch owner for familyId=${familyId}`, error);
+    return;
+  }
+  if (!owner) {
+    console.warn(`[loops] trackFamilyInviteAccepted no owner found for familyId=${familyId}`);
+    return;
+  }
+
+  await trackForUser(record, owner.user_id as string | undefined, "Invite Accepted", { type: "family" });
 }
 
 /**
@@ -138,6 +176,12 @@ const RESOLVERS: Record<string, Resolver> = {
 
 export async function dispatchToLoops(event: WebhookEvent): Promise<void> {
   if (!event.record) return;
-  const resolver = RESOLVERS[`${event.table}:${event.type}`];
-  if (resolver) await resolver(event.record, event.old_record);
+  const key = `${event.table}:${event.type}`;
+  const resolver = RESOLVERS[key];
+  if (!resolver) {
+    console.log(`[loops] no resolver for ${key}, skipping`);
+    return;
+  }
+  console.log(`[loops] running resolver for ${key}`);
+  await resolver(event.record, event.old_record);
 }

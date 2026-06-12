@@ -4,9 +4,9 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "fetch:everyplate": "node scripts/fetch-everyplate-recipes.mjs",
-    "import:aldi": "node scripts/import-aldi-products.mjs",
-    "import:everyplate": "node scripts/import-everyplate-recipes.mjs --fetch",
+    "fetch:everyplate": "node scripts/everyplate/fetch.mjs",
+    "import:aldi": "node scripts/aldi/import.mjs",
+    "import:everyplate": "node scripts/everyplate/import.mjs --fetch",
     "import:all": "pnpm import:aldi && pnpm import:everyplate",
     "start": "next start",
     "typecheck": "tsc --noEmit"

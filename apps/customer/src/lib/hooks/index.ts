@@ -24,3 +24,5 @@ export type { PendingInvite } from "./usePendingInvites";
 
 export { useFamilyContext } from "./useFamilyContext";
 export type { FamilyContext } from "./useFamilyContext";
+
+export { usePendingSwapCount } from "./usePendingSwapCount";

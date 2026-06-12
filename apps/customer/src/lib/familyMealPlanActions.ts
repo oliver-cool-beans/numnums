@@ -37,6 +37,8 @@ export type SwapSuggestion = {
   proposedRecipe: Pick<Recipe, "id" | "name" | "image_url">;
   suggestedByUserId: string;
   suggestedByName: string | null;
+  yesVotes: number;
+  noVotes: number;
 };
 
 function dayColumn(day: Weekday) {
@@ -86,7 +88,7 @@ export async function fetchFamilySwapSuggestions(
   const { data, error } = await supabase
     .from("recipe_swap_suggestions")
     .select(
-      "id, day, status, suggested_by_user_id, " +
+      "id, day, status, suggested_by_user_id, yes_votes, no_votes, " +
         "current_recipe:recipes!recipe_swap_suggestions_current_recipe_id_fkey(id, name), " +
         "proposed_recipe:recipes!recipe_swap_suggestions_proposed_recipe_id_fkey(id, name, image_url), " +
         "suggested_by:users!recipe_swap_suggestions_suggested_by_user_id_fkey(name)",
@@ -104,6 +106,8 @@ export async function fetchFamilySwapSuggestions(
       day: Weekday;
       status: "pending" | "approved" | "dismissed";
       suggested_by_user_id: string;
+      yes_votes: number;
+      no_votes: number;
       current_recipe: { id: string; name: string } | null;
       proposed_recipe: { id: string; name: string; image_url: string | null };
       suggested_by: { name: string | null } | null;
@@ -116,6 +120,8 @@ export async function fetchFamilySwapSuggestions(
       proposedRecipe: r.proposed_recipe,
       suggestedByUserId: r.suggested_by_user_id,
       suggestedByName: r.suggested_by?.name ?? null,
+      yesVotes: r.yes_votes ?? 0,
+      noVotes: r.no_votes ?? 0,
     };
   });
 }
@@ -193,6 +199,14 @@ export async function approveRecipeSwapSuggestion(
   if (error) throw error;
 
   await refreshShoppingListForWeek(ownerId, week, year);
+}
+
+export async function voteOnRecipeSwapSuggestion(suggestionId: string, yes: boolean): Promise<void> {
+  const { error } = await supabase.rpc("vote_recipe_swap_suggestion", {
+    p_suggestion_id: suggestionId,
+    p_yes: yes,
+  });
+  if (error) throw error;
 }
 
 export async function dismissRecipeSwapSuggestion(suggestionId: string): Promise<void> {
