@@ -213,7 +213,18 @@ function DashboardInner() {
   }, []);
 
   const { user, loading: userLoading, signOut } = useAuth();
-  const { mealPlan, loading: mealPlanLoading, refetch: refetchMealPlan } = useUserMealPlan(user?.id);
+
+  const familyContext = useFamilyContext(user?.id);
+
+  // While familyContext is loading (undefined) we don't know whose plan to show,
+  // so hold off on fetching (pass undefined). Once resolved: non-owner members
+  // see the owner's plan; everyone else sees their own.
+  const mealPlanUserId =
+    familyContext === undefined
+      ? undefined
+      : familyContext?.ownerId ?? user?.id;
+
+  const { mealPlan, loading: mealPlanLoading, refetch: refetchMealPlan } = useUserMealPlan(mealPlanUserId);
 
   const getTodayRecipeId = (): string | undefined => {
     if (!mealPlan) return undefined;
@@ -228,7 +239,7 @@ function DashboardInner() {
   const todayRecipeId = getTodayRecipeId();
 
   const { recipe: todayRecipe, loading: todayRecipeLoading } = useTodayRecipe(user?.id, todayRecipeId);
-  const { week: weekPreview, loading: weekLoading, refetch: refetchWeekPreview } = useWeekPreview(user?.id);
+  const { week: weekPreview, loading: weekLoading, refetch: refetchWeekPreview } = useWeekPreview(mealPlanUserId);
   const { list: shoppingList, loading: listLoading } = useShoppingList(user?.id);
   const { friendsToday, loading: friendsTodayLoading } = useFriendsToday(user?.id);
 
@@ -237,7 +248,6 @@ function DashboardInner() {
     refetchWeekPreview();
   });
 
-  const familyContext = useFamilyContext(user?.id);
   const pendingSwapCount = usePendingSwapCount(
     familyContext?.familyId,
     familyContext?.isOwner ?? false,
@@ -255,10 +265,12 @@ function DashboardInner() {
   };
 
   const listIsFinalized = shoppingList?.status === "confirmed" || shoppingList?.status === "completed";
+  const isFamilyMember = Boolean(familyContext) && !familyContext?.isOwner;
   const showSwapCard =
     !listIsFinalized &&
     Boolean(todayRecipe) &&
-    todayRecipe?.progress.status !== "completed";
+    todayRecipe?.progress.status !== "completed" &&
+    !isFamilyMember;
 
   const handleTabChange = (tab: "week" | "list" | "profile") => {
     setActiveTab(tab);
@@ -282,6 +294,7 @@ function DashboardInner() {
   };
 
   const handleLongPressDay = (day: Weekday, recipeId: string) => {
+    if (isFamilyMember) return;
     const dayEntry = weekPreview.find((d) => d.day === day);
     setDayMenuTarget({ day, recipeId, recipeName: dayEntry?.recipeName ?? null });
   };
@@ -320,7 +333,8 @@ function DashboardInner() {
   if (!user) return null;
 
   const skipOnboarding = searchParams.get("skipOnboarding") === "1";
-  const shouldShowOnboarding = !mealPlanLoading && !mealPlan && !skipOnboarding;
+  // Family members see the owner's plan; never prompt them to build their own.
+  const shouldShowOnboarding = !mealPlanLoading && !mealPlan && !skipOnboarding && !familyContext;
 
   if (shouldShowOnboarding) {
     return (
@@ -584,7 +598,7 @@ function DashboardInner() {
         />
       )}
 
-      {recipeSwap.target && (
+      {!isFamilyMember && recipeSwap.target && (
         <RecipeSwapPicker
           userId={user.id}
           day={recipeSwap.target.day}

@@ -705,5 +705,9 @@
     "source_unit": "drizzle",
     "quantity": 1,
     "unit": "tbs"
+  },
+  {
+    "ingredient_handle": "egg",
+    "is_pantry": true
   }
 ]

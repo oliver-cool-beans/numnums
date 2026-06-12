@@ -26,7 +26,7 @@ const DEFAULT_INPUT_PATH = resolveRepoPath('src', 'scripts', 'output', 'ep-recip
 const OVERRIDES_PATH = path.resolve(__dirname, 'ingredient-overrides.json');
 
 const ALLOWED_UNITS = new Set(['g', 'ml', 'l', 'tbs', 'tsp', 'cup']);
-const UNRECOGNISED_UNITS_LOG = path.resolve(__dirname, 'unrecognised-units.log');
+const UNRECOGNISED_UNITS_LOG = resolveRepoPath('src', 'scripts', 'output', 'ep-unrecognised-units.log');
 
 const unrecognisedUnits = new Set();
 
@@ -35,28 +35,36 @@ function buildOverrideLookup(overrides) {
 
   for (const override of overrides) {
     const handle = override.ingredient_handle;
-    const sourceUnit = (override.source_unit ?? '').toLowerCase();
 
     if (!lookup.has(handle)) {
-      lookup.set(handle, new Map());
+      lookup.set(handle, { isPantry: false, unitOverrides: new Map() });
     }
 
-    lookup.get(handle).set(sourceUnit, {
-      sourceQuantity: override.source_quantity,
-      quantity: override.quantity,
-      unit: override.unit
-    });
+    const entry = lookup.get(handle);
+
+    if (override.is_pantry === true) {
+      entry.isPantry = true;
+    }
+
+    if (override.source_unit !== undefined) {
+      const sourceUnit = (override.source_unit ?? '').toLowerCase();
+      entry.unitOverrides.set(sourceUnit, {
+        sourceQuantity: override.source_quantity,
+        quantity: override.quantity,
+        unit: override.unit
+      });
+    }
   }
 
   return lookup;
 }
 
 function applyOverride(handle, quantity, unit, overrideLookup) {
-  const handleOverrides = overrideLookup.get(handle);
-  if (!handleOverrides) return { quantity, unit };
+  const entry = overrideLookup.get(handle);
+  if (!entry) return { quantity, unit };
 
   const sourceUnit = (unit ?? '').toLowerCase();
-  const override = handleOverrides.get(sourceUnit);
+  const override = entry.unitOverrides.get(sourceUnit);
   if (!override) return { quantity, unit };
 
   const ratio = (quantity ?? override.sourceQuantity) / override.sourceQuantity;
@@ -141,16 +149,21 @@ function buildCanonicalIngredientRows(rows) {
     const currentRow = rowsByKey.get(key);
 
     if (!currentRow) {
-      rowsByKey.set(key, {
+      const canonical = {
         source: row.source,
         handle: row.handle,
         image_url: row.image_url ?? null
-      });
+      };
+      if (row.is_pantry) canonical.is_pantry = true;
+      rowsByKey.set(key, canonical);
       continue;
     }
 
     if (!currentRow.image_url && row.image_url) {
       currentRow.image_url = row.image_url;
+    }
+    if (row.is_pantry && !currentRow.is_pantry) {
+      currentRow.is_pantry = true;
     }
   }
 
@@ -230,13 +243,16 @@ function mapIngredient(recipeId, ingredient, overrideLookup) {
   const { quantity, unit } = applyOverride(handle, rawQuantity, rawUnit, overrideLookup);
   const validUnit = validateUnit(handle, unit) ? unit : null;
 
+  const isPantry = overrideLookup.get(handle)?.isPantry ?? false;
+
   return {
     recipe_id: recipeId,
     source: SOURCE,
     handle,
     image_url: normalizeEveryPlateMediaUrl(ingredient.imageUrl),
     quantity,
-    unit: validUnit
+    unit: validUnit,
+    is_pantry: isPantry
   };
 }
 
@@ -306,18 +322,77 @@ function resolveIngredientLinkRow(row, ingredientIdMap) {
   };
 }
 
+async function fetchExistingChildRows(supabase, table, recipeIds, columns) {
+  const results = await Promise.all(
+    chunk(recipeIds).map(async (batch) => {
+      const { data, error } = await supabase.from(table).select(columns).in('recipe_id', batch);
+      if (error) throw error;
+      return data ?? [];
+    })
+  );
+  return results.flat();
+}
+
+function rowChanged(existing, incoming, compareFields) {
+  return compareFields.some((field) => JSON.stringify(existing[field]) !== JSON.stringify(incoming[field]));
+}
+
+async function filterToChangedRows(supabase, table, recipeIds, incomingRows, naturalKey, compareFields) {
+  const columns = ['recipe_id', naturalKey, ...compareFields].join(', ');
+  const existingRows = await fetchExistingChildRows(supabase, table, recipeIds, columns);
+  // Composite key: step_number and ingredient_id both repeat across recipes
+  const existingByKey = new Map(existingRows.map((row) => [`${row.recipe_id}::${row[naturalKey]}`, row]));
+  return incomingRows.filter((row) => {
+    const existing = existingByKey.get(`${row.recipe_id}::${row[naturalKey]}`);
+    return !existing || rowChanged(existing, row, compareFields);
+  });
+}
+
+async function deleteRecipeChildStragglers(supabase, table, recipeIds, rows, childKey) {
+  const retainByRecipe = new Map(recipeIds.map((id) => [id, []]));
+  for (const row of rows) retainByRecipe.get(row.recipe_id)?.push(row[childKey]);
+
+  await Promise.all(
+    [...retainByRecipe].map(async ([recipeId, retainValues]) => {
+      let query = supabase.from(table).delete().eq('recipe_id', recipeId);
+      if (retainValues.length > 0) {
+        query = query.not(childKey, 'in', `(${retainValues.join(',')})`);
+      }
+      const { error } = await query;
+      if (error) throw error;
+    })
+  );
+}
+
+const CHILD_TABLE_CHANGE_CONFIG = {
+  recipe_steps: { naturalKey: 'step_number', compareFields: ['instructions', 'image_assets', 'video_assets'] },
+  recipe_ingredient_links: { naturalKey: 'ingredient_id', compareFields: ['quantity', 'unit'] },
+};
+
 async function replaceRecipeChildren(supabase, table, recipeIds, rows, onConflict) {
-  for (const recipeIdBatch of chunk(recipeIds)) {
-    const { error: deleteError } = await supabase.from(table).delete().in('recipe_id', recipeIdBatch);
+  const childKey = onConflict.split(',')[1];
+  const changeConfig = CHILD_TABLE_CHANGE_CONFIG[table];
 
-    if (deleteError) {
-      throw deleteError;
-    }
+  let rowsToUpsert = rows;
+  if (changeConfig) {
+    rowsToUpsert = await filterToChangedRows(supabase, table, recipeIds, rows, changeConfig.naturalKey, changeConfig.compareFields);
   }
 
-  if (rows.length > 0) {
-    await upsertRows(supabase, table, rows, onConflict);
+  if (rowsToUpsert.length > 0) {
+    await upsertRows(supabase, table, rowsToUpsert, onConflict);
   }
+
+  await deleteRecipeChildStragglers(supabase, table, recipeIds, rows, childKey);
+}
+
+async function upsertAndSelectRows(supabase, table, rows, onConflict, selectColumns) {
+  const results = [];
+  for (const batch of chunk(rows)) {
+    const { data, error } = await supabase.from(table).upsert(batch, { onConflict }).select(selectColumns);
+    if (error) throw error;
+    results.push(...(data ?? []));
+  }
+  return results;
 }
 
 async function loadExistingRecipes(supabase, externalIds) {
@@ -342,50 +417,6 @@ async function loadExistingRecipes(supabase, externalIds) {
   return existingRecipes;
 }
 
-async function loadIngredientIdMap(supabase, handles) {
-  const ingredientIdMap = new Map();
-
-  for (const batch of chunk([...new Set(handles)])) {
-    const { data, error } = await supabase
-      .from('ingredients')
-      .select('id, handle')
-      .eq('source', SOURCE)
-      .in('handle', batch);
-
-    if (error) {
-      throw error;
-    }
-
-    for (const row of data ?? []) {
-      ingredientIdMap.set(row.handle, row.id);
-    }
-  }
-
-  return ingredientIdMap;
-}
-
-async function loadRecipeIdMap(supabase, externalIds) {
-  const recipeIdMap = new Map();
-
-  for (let index = 0; index < externalIds.length; index += 200) {
-    const batch = externalIds.slice(index, index + 200);
-    const { data, error } = await supabase
-      .from('recipes')
-      .select('id, external_id')
-      .eq('source', SOURCE)
-      .in('external_id', batch);
-
-    if (error) {
-      throw error;
-    }
-
-    for (const row of data ?? []) {
-      recipeIdMap.set(row.external_id, row.id);
-    }
-  }
-
-  return recipeIdMap;
-}
 
 async function importRecipeBatch(supabase, rawRecipes, overrideLookup, metadata = null) {
   const eligibleRecipes = rawRecipes.filter(shouldImportRecipe);
@@ -410,13 +441,13 @@ async function importRecipeBatch(supabase, rawRecipes, overrideLookup, metadata 
   const recipeRows = eligibleRecipes.map(mapRecipe);
   const externalIds = recipeRows.map((row) => row.external_id);
 
-  logImportStage(metadata, `checking ${recipeRows.length} existing recipes`);
-  const existingRecipes = await loadExistingRecipes(supabase, externalIds);
   logImportStage(metadata, `upserting ${recipeRows.length} recipes`);
-  await upsertRows(supabase, 'recipes', recipeRows, 'source,external_id');
+  const [existingRecipes, upsertedRecipes] = await Promise.all([
+    loadExistingRecipes(supabase, externalIds),
+    upsertAndSelectRows(supabase, 'recipes', recipeRows, 'source,external_id', 'id, external_id'),
+  ]);
+  const recipeIdMap = new Map(upsertedRecipes.map((row) => [row.external_id, row.id]));
 
-  logImportStage(metadata, `reloading ${externalIds.length} recipe ids`);
-  const recipeIdMap = await loadRecipeIdMap(supabase, externalIds);
   const { ingredientRows, stepRows } = buildChildRows(eligibleRecipes, recipeIdMap, overrideLookup);
 
   const dedupedIngredientRows = dedupeIngredientRows(ingredientRows);
@@ -432,27 +463,19 @@ async function importRecipeBatch(supabase, rawRecipes, overrideLookup, metadata 
   );
 
   logImportStage(metadata, `upserting ${canonicalIngredientRows.length} ingredients`);
-  await upsertRows(supabase, 'ingredients', canonicalIngredientRows, 'source,handle');
+  const upsertedIngredients = await upsertAndSelectRows(supabase, 'ingredients', canonicalIngredientRows, 'source,handle', 'id, handle');
+  const ingredientIdMap = new Map(upsertedIngredients.map((row) => [row.handle, row.id]));
 
-  logImportStage(metadata, `reloading ${canonicalIngredientRows.length} ingredient ids`);
-  const ingredientIdMap = await loadIngredientIdMap(
-    supabase,
-    canonicalIngredientRows.map((row) => row.handle)
-  );
   const recipeIngredientLinkRows = dedupedIngredientRows.map((row) =>
     resolveIngredientLinkRow(row, ingredientIdMap)
   );
 
-  logImportStage(metadata, `replacing ${recipeIngredientLinkRows.length} recipe ingredient links`);
-  await replaceRecipeChildren(
-    supabase,
-    'recipe_ingredient_links',
-    [...recipeIdMap.values()],
-    recipeIngredientLinkRows,
-    'recipe_id,ingredient_id'
-  );
-  logImportStage(metadata, `replacing ${stepRows.length} recipe steps`);
-  await replaceRecipeChildren(supabase, 'recipe_steps', [...recipeIdMap.values()], stepRows, 'recipe_id,step_number');
+  const recipeIds = [...recipeIdMap.values()];
+  logImportStage(metadata, `replacing ${recipeIngredientLinkRows.length} ingredient links and ${stepRows.length} steps`);
+  await Promise.all([
+    replaceRecipeChildren(supabase, 'recipe_ingredient_links', recipeIds, recipeIngredientLinkRows, 'recipe_id,ingredient_id'),
+    replaceRecipeChildren(supabase, 'recipe_steps', recipeIds, stepRows, 'recipe_id,step_number'),
+  ]);
 
   const insertedCount = recipeRows.filter((row) => !existingRecipes.has(row.external_id)).length;
   const updatedCount = recipeRows.length - insertedCount;
@@ -533,8 +556,12 @@ async function main() {
     });
 
     if (unrecognisedUnits.size > 0) {
-      const lines = [...unrecognisedUnits].sort();
-      await fs.writeFile(UNRECOGNISED_UNITS_LOG, `unit\tingredient\n${lines.join('\n')}\n`);
+      const lines = [...unrecognisedUnits].sort((a, b) => a.localeCompare(b)).map((entry) => {
+        const [unit, handle] = entry.split('\t');
+        return `${handle}\t${unit}`;
+      });
+      await fs.mkdir(path.dirname(UNRECOGNISED_UNITS_LOG), { recursive: true });
+      await fs.writeFile(UNRECOGNISED_UNITS_LOG, lines.join('\n') + '\n');
       console.error(`[import-everyplate] ${unrecognisedUnits.size} unrecognised unit(s) logged to ${UNRECOGNISED_UNITS_LOG}`);
     }
 

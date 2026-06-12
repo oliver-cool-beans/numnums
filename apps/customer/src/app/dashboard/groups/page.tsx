@@ -157,6 +157,19 @@ function FamilyContent({
     "family",
     family?.id,
   );
+  const [leaving, setLeaving] = useState(false);
+
+  async function handleLeaveFamily() {
+    if (!family) return;
+    setLeaving(true);
+    const { error } = await supabase.rpc("leave_family", { p_family_id: family.id });
+    setLeaving(false);
+    if (error) {
+      toast.error(error.message || "Could not leave the family");
+      return;
+    }
+    reload();
+  }
 
   if (families === null) {
     return <p className="px-1 text-sm text-[#9E8B7E]">Loading...</p>;
@@ -192,6 +205,18 @@ function FamilyContent({
         {isOwner && <InviteLinkPanel familyId={family!.id} onAfterSent={reloadInvites} />}
       </div>
       {isOwner && <FamilyPendingInvites invites={pendingInvites} revoke={revokePendingInvite} />}
+      {!isOwner && (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => void handleLeaveFamily()}
+            disabled={leaving}
+            className="w-full rounded-[14px] border border-[#E7D9CD] bg-white px-4 py-3 text-sm font-medium text-[#C0392B] transition-colors hover:bg-[#FDF5F5] disabled:opacity-60"
+          >
+            {leaving ? "Leaving..." : "Leave family"}
+          </button>
+        </div>
+      )}
     </>
   );
 }

@@ -4,6 +4,11 @@ const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPAB
 
 const LOOPS_API_KEY = Deno.env.get("LOOPS_API_KEY")!;
 
+const TRANSACTIONAL_IDS = {
+  familyInvite: "cmq80rwkc39z60jxqy8qvqo04",
+  friendInvite: "cmq66n8pz059d0jwcud69szb3",
+} as const;;
+
 export type WebhookEvent = {
   type: "INSERT" | "UPDATE" | "DELETE";
   table: string;
@@ -85,6 +90,62 @@ async function trackForUser(
   await send(email, eventName, eventProperties, idempotencyKey);
 }
 
+async function sendTransactional(
+  email: string,
+  transactionalId: string,
+  dataVariables: Record<string, string>,
+  idempotencyKey?: string,
+): Promise<void> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${LOOPS_API_KEY}`,
+    "Content-Type": "application/json",
+  };
+  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
+
+  console.log(`[loops] sending transactional id=${transactionalId} to ${email}`);
+  const response = await fetch("https://app.loops.so/api/v1/transactional", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ transactionalId, email, dataVariables }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`[loops] transactional id=${transactionalId} to ${email} failed (${response.status}): ${body}`);
+  }
+  console.log(`[loops] transactional id=${transactionalId} delivered to ${email}`);
+}
+
+async function sendInviteEmail(record: Row): Promise<void> {
+  const inviteeEmail = record.invitee_email as string | undefined;
+  const inviteUrl = record.invite_url as string | undefined;
+  const kind = record.kind as string | undefined;
+  const inviterId = record.inviter_id as string | undefined;
+
+  if (!inviteeEmail || !inviteUrl) {
+    console.log("[loops] sendInviteEmail skipping — no invitee_email/invite_url (link-only invite)");
+    return;
+  }
+
+  const { data: profile, error } = await supabase
+    .from("users")
+    .select("name")
+    .eq("id", inviterId)
+    .maybeSingle();
+
+  if (error) console.warn(`[loops] sendInviteEmail could not fetch inviter name for inviterId=${inviterId}`, error);
+  const inviterName = (profile?.name as string | null)?.split(" ")[0] || "Someone";
+
+  const transactionalId = kind === "family" ? TRANSACTIONAL_IDS.familyInvite : TRANSACTIONAL_IDS.friendInvite;
+  const dataVariables: Record<string, string> =
+    kind === "family"
+      ? { inviterName, inviteLink: inviteUrl }
+      : { friendName: inviterName, inviteLink: inviteUrl };
+
+  const idempotencyKey = typeof record.id === "string" ? `invite-email:${record.id}` : undefined;
+  await sendTransactional(inviteeEmail, transactionalId, dataVariables, idempotencyKey);
+}
+
 function statusChangedTo(record: Row, oldRecord: Row | null, status: string): boolean {
   return record.status === status && oldRecord?.status !== status;
 }
@@ -140,6 +201,7 @@ async function trackFamilyInviteAccepted(record: Row): Promise<void> {
  * the dispatcher routes by `table:TYPE` and stays a dumb generic router.
  */
 const RESOLVERS: Record<string, Resolver> = {
+  "invites:INSERT": (record) => sendInviteEmail(record),
   "users:INSERT": (record) => trackForUser(record, record.id as string | undefined, "Signed Up"),
   "friendships:INSERT": (record) =>
     trackForUser(record, record.requester_id as string | undefined, "Invite Accepted", { type: "friend" }),
