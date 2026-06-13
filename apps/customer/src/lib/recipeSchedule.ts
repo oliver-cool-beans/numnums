@@ -107,7 +107,7 @@ export function getFilteredRecipes(recipes: OnboardingRecipe[], selectedRequirem
   const matches = recipes.filter((r) =>
     selectedRequirements.every((req) => matchesRequirement(r, req)),
   );
-  return matches.length >= 6 ? matches : recipes;
+  return matches.length > 0 ? matches : recipes;
 }
 
 export function chunkRecipes(recipes: OnboardingRecipe[]) {
@@ -147,14 +147,26 @@ export function buildSchedule(
   return meals;
 }
 
+const RECIPE_SELECT =
+  "id, name, image_url, total_minutes, prep_minutes, difficulty, headline, description, source, servings, updated_at, dietary_tags";
+
 export async function fetchOnboardingRecipes(): Promise<OnboardingRecipe[]> {
   const { data, error } = await supabase
     .from("recipes")
-    .select(
-      "id, name, image_url, total_minutes, prep_minutes, difficulty, headline, description, source, servings, updated_at, dietary_tags",
-    )
+    .select(RECIPE_SELECT)
     .order("updated_at", { ascending: false })
-    .limit(72);
+    .limit(500);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function searchRecipesByName(query: string): Promise<OnboardingRecipe[]> {
+  const { data, error } = await supabase
+    .from("recipes")
+    .select(RECIPE_SELECT)
+    .ilike("name", `%${query}%`)
+    .order("name", { ascending: true })
+    .limit(200);
   if (error) throw error;
   return data ?? [];
 }

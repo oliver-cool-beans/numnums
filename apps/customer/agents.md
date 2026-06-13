@@ -23,6 +23,7 @@ This app is the customer-facing mobile-first experience for NumNums.
 - Mobile first by default.
 - Use foundational shadcn components from `src/components/ui`.
 - Keep page structure simple and readable.
+- **Entire card/block must be the click target.** Never put onClick only on a text link inside a block — wrap the whole block in a `<button type="button">` or `<a>` so the full hit area is tappable/clickable. Links inside a block should be removed in favour of the block-level handler.
 
 ## Coding standards
 

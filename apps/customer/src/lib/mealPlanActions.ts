@@ -41,12 +41,50 @@ export async function generateWeekPlan(
 type IngredientLinkRow = {
   ingredient_id: string;
   quantity: number | string | null;
+  unit: string | null;
+};
+
+type IngredientTotal = {
+  total: number;
+  unit: string | null;
 };
 
 type ProductLinkRow = {
   ingredient_id: string;
   product_id: string;
+  // Supabase may return embedded FK resources as an array even for many-to-one joins
+  products: { selling_size: number | null; selling_unit: string | null }[] | { selling_size: number | null; selling_unit: string | null } | null;
 };
+
+type ProductDetail = {
+  product_id: string;
+  selling_size: number | null;
+  selling_unit: string | null;
+};
+
+function normalizeToBase(quantity: number, unit: string | null): { value: number; base: "g" | "ml" } | null {
+  switch (unit) {
+    case "g": return { value: quantity, base: "g" };
+    case "kg": return { value: quantity * 1000, base: "g" };
+    case "mg": return { value: quantity / 1000, base: "g" };
+    case "ml": return { value: quantity, base: "ml" };
+    case "l": return { value: quantity * 1000, base: "ml" };
+    default: return null;
+  }
+}
+
+function packsNeeded(
+  ingredientQty: number,
+  ingredientUnit: string | null,
+  sellingSize: number | null,
+  sellingUnit: string | null,
+): number {
+  if (!sellingSize) return ingredientQty;
+  const iNorm = normalizeToBase(ingredientQty, ingredientUnit);
+  const pNorm = normalizeToBase(sellingSize, sellingUnit);
+  if (!iNorm || !pNorm || iNorm.base !== pNorm.base) return ingredientQty;
+  return Math.ceil(iNorm.value / pNorm.value);
+}
 
 export async function saveMealPlan(
   userId: string,
@@ -99,52 +137,72 @@ export async function replaceShoppingList(userId: string, mealPlanId: string): P
   return data.id;
 }
 
-async function loadIngredientTotals(recipeIds: string[]): Promise<Map<string, number>> {
+async function loadIngredientTotals(recipeIds: string[]): Promise<Map<string, IngredientTotal>> {
   const { data, error } = await supabase
     .from("recipe_ingredient_links")
-    .select("ingredient_id, quantity")
+    .select("ingredient_id, quantity, unit")
     .in("recipe_id", recipeIds);
 
   if (error) throw error;
 
-  const totals = new Map<string, number>();
+  const totals = new Map<string, IngredientTotal>();
   for (const link of (data ?? []) as IngredientLinkRow[]) {
-    totals.set(link.ingredient_id, (totals.get(link.ingredient_id) ?? 0) + Number(link.quantity ?? 1));
+    const qty = Number(link.quantity ?? 1);
+    const existing = totals.get(link.ingredient_id);
+    if (existing) {
+      existing.total += qty;
+    } else {
+      totals.set(link.ingredient_id, { total: qty, unit: link.unit });
+    }
   }
   return totals;
 }
 
-async function loadPreferredProducts(ingredientIds: string[]): Promise<Map<string, string>> {
+async function loadPreferredProducts(ingredientIds: string[]): Promise<Map<string, ProductDetail>> {
   const { data, error } = await supabase
     .from("ingredient_product_links")
-    .select("ingredient_id, product_id")
+    .select("ingredient_id, product_id, products(selling_size, selling_unit)")
     .in("ingredient_id", ingredientIds)
     .order("priority", { ascending: false });
 
   if (error) throw error;
 
-  const preferred = new Map<string, string>();
-  for (const link of (data ?? []) as ProductLinkRow[]) {
-    if (!preferred.has(link.ingredient_id)) preferred.set(link.ingredient_id, link.product_id);
+  const preferred = new Map<string, ProductDetail>();
+  for (const link of (data ?? []) as unknown as ProductLinkRow[]) {
+    if (!preferred.has(link.ingredient_id)) {
+      const prod = Array.isArray(link.products) ? link.products[0] : link.products;
+      preferred.set(link.ingredient_id, {
+        product_id: link.product_id,
+        selling_size: prod?.selling_size ?? null,
+        selling_unit: prod?.selling_unit ?? null,
+      });
+    }
   }
   return preferred;
 }
 
 async function insertShoppingListItems(
   shoppingListId: string,
-  ingredientTotals: Map<string, number>,
+  ingredientTotals: Map<string, IngredientTotal>,
 ): Promise<void> {
   if (ingredientTotals.size === 0) return;
 
   const ids = Array.from(ingredientTotals.keys());
   const preferred = await loadPreferredProducts(ids);
 
-  const items = ids.map((id) => ({
-    shopping_list_id: shoppingListId,
-    ingredient_id: id,
-    product_id: preferred.get(id) ?? null,
-    quantity_needed: ingredientTotals.get(id) ?? 1,
-  }));
+  const items = ids.map((id) => {
+    const { total, unit } = ingredientTotals.get(id)!;
+    const product = preferred.get(id);
+    const quantityNeeded = product
+      ? packsNeeded(total, unit, product.selling_size, product.selling_unit)
+      : total;
+    return {
+      shopping_list_id: shoppingListId,
+      ingredient_id: id,
+      product_id: product?.product_id ?? null,
+      quantity_needed: quantityNeeded,
+    };
+  });
 
   const { error } = await supabase.from("shopping_list_items").insert(items);
   if (error) throw error;

@@ -66,7 +66,7 @@ function SuggestionPanel({
   return (
     <div className="mt-2.5 rounded-[14px] bg-[#FFF7E8] px-3 py-2.5">
       <p className="text-xs leading-5 text-[#6F5B4B]">
-        <span className="font-semibold text-[#3A2A1F]">{suggestion.suggestedByName ?? "Someone"}</span>{" "}
+        <span className="font-semibold text-[#3A2A1F]">{firstName(suggestion.suggestedByName)}</span>{" "}
         suggested swapping in{" "}
         <span className="font-semibold text-[#3A2A1F]">{suggestion.proposedRecipe.name}</span>
       </p>
@@ -167,6 +167,10 @@ function DayActions({
       )}
     </div>
   );
+}
+
+function firstName(name: string | null | undefined): string {
+  return name?.split(" ")[0] ?? "Someone";
 }
 
 export function FamilyWeekPlan({ familyId, ownerId, ownerName, currentUserId, isOwner, week, year }: FamilyWeekPlanProps) {
@@ -305,7 +309,7 @@ export function FamilyWeekPlan({ familyId, ownerId, ownerName, currentUserId, is
       <p className="px-1 text-xs text-[#6F5B4B]">
         {isOwner
           ? "You manage this plan. Approve suggestions from family members, or switch a recipe directly."
-          : `You can suggest swaps — ${ownerName ?? "the plan owner"} will review and approve them.`}
+          : `You can suggest swaps — ${firstName(ownerName)} will review and approve them.`}
       </p>
 
       <ul className="mt-3 space-y-2">
@@ -363,6 +367,9 @@ export function FamilyWeekPlan({ familyId, ownerId, ownerName, currentUserId, is
           day={picker.day}
           title={picker.mode === "switch" ? "Switch recipe" : "Suggest a swap"}
           currentRecipeId={picker.currentRecipeId}
+          currentRecipeName={
+            plan?.days.find((d) => d.day === picker.day)?.recipe?.name ?? null
+          }
           recentRecipeIds={recentRecipeIds}
           onCancel={() => setPicker(null)}
           onSelect={(recipe) => void handlePickerSelect(recipe)}

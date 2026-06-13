@@ -132,6 +132,15 @@
   }
 }
 
+/* Shift Sonner toasts to the center of the content column on desktop.
+   The sidebar is 220px wide, so the content center is 110px right of the
+   viewport center. Sonner's own transform: translateX(-50%) is preserved. */
+@media (min-width: 768px) {
+  [data-sonner-toaster][data-x-position="center"] {
+    left: calc(50% + 110px) !important;
+  }
+}
+
 @keyframes splashPotBounce {
   0% {
     opacity: 0;

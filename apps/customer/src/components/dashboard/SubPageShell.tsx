@@ -34,7 +34,7 @@ export function SubPageShell({ children, activeTab = "week" }: SubPageShellProps
       {/* Right panel: content + mobile bottom nav */}
       <div className="flex h-full flex-col md:flex-1 md:overflow-y-auto">
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          <NumnumsBackground />
+          <NumnumsBackground animated />
           <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto md:items-center md:py-6 md:px-8">
             {children}
           </div>

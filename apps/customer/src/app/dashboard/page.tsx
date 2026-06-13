@@ -384,7 +384,7 @@ function DashboardInner() {
       {/* ── Mobile layout (hidden on md+) ── */}
       <div className="flex h-dvh flex-col md:hidden">
         <main className="relative mx-auto flex w-full max-w-[390px] flex-1 flex-col overflow-hidden bg-white">
-          <NumnumsBackground />
+          <NumnumsBackground animated />
           <div className="relative z-10 flex flex-1 flex-col overflow-y-auto pb-6">
             <Header
               user={user}
@@ -416,7 +416,7 @@ function DashboardInner() {
             {familyContext?.isOwner && pendingSwapCount > 0 && (
               <PendingSwapsBanner
                 count={pendingSwapCount}
-                onReview={() => router.push("/dashboard/groups")}
+                onReview={() => { const { week, year } = getCurrentWeek(); router.push(`/dashboard/week?week=${week}&year=${year}`); }}
               />
             )}
             <div className="relative z-10">
@@ -471,7 +471,7 @@ function DashboardInner() {
       {/* ── Desktop layout (hidden on mobile) ── */}
       <div className="hidden md:block md:flex-1 md:overflow-y-auto md:bg-[#F7F3EF]">
         <div className="relative">
-          <NumnumsBackground />
+          <NumnumsBackground animated />
           <div className="relative z-10 mx-auto w-full max-w-[680px] px-8 pt-6 pb-10">
 
           <div className="mb-1 flex items-center justify-between">
@@ -510,7 +510,7 @@ function DashboardInner() {
             <PendingSwapsBanner
               className="mb-5"
               count={pendingSwapCount}
-              onReview={() => router.push("/dashboard/groups")}
+              onReview={() => { const { week, year } = getCurrentWeek(); router.push(`/dashboard/week?week=${week}&year=${year}`); }}
             />
           )}
 

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronLeft, ChevronRight, Check, ShoppingCart, Copy } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { useShoppingListFull, type EnrichedItem } from "@/lib/hooks/useShoppingListFull";
+import { useShoppingListFull, useFamilyContext, type EnrichedItem } from "@/lib/hooks";
 import { SubPageShell } from "@/components/dashboard";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -90,7 +90,7 @@ function ItemRow({ item, onToggle }: { item: EnrichedItem; onToggle: (id: string
   const [imgLoaded, setImgLoaded] = useState(false);
   const name = deriveName(item);
   const subtitle = item.product_name && item.ingredient_handle ? formatHandle(item.ingredient_handle) : null;
-  const qty = item.quantity_needed > 1 ? `×${item.quantity_needed}` : null;
+  const qty = item.product_id && item.quantity_needed > 1 ? `×${item.quantity_needed}` : null;
   const sourceLogo = item.product_source ? SOURCE_LOGOS[item.product_source.toLowerCase()] : null;
 
   return (
@@ -277,10 +277,16 @@ function ShoppingListInner() {
 
   const weekFilter = isCurrentWeek ? undefined : { weekNumber: activeWeek, weekYear: activeYear };
 
-  const { list, loading, error, toggleItem, completeList, uncompleteList, quickComplete } = useShoppingListFull(
-    user?.id,
+  // For family members, show the owner's shopping list (same as the owner's meal plan)
+  const familyContext = useFamilyContext(user?.id);
+  const isFamilyLoading = user?.id !== undefined && familyContext === undefined;
+  const listUserId = isFamilyLoading ? undefined : (familyContext?.ownerId ?? user?.id);
+
+  const { list, loading: listLoading, error, toggleItem, completeList, uncompleteList, quickComplete } = useShoppingListFull(
+    listUserId,
     weekFilter,
   );
+  const loading = authLoading || isFamilyLoading || listLoading;
 
   const [listCopied, setListCopied] = useState(false);
   const [showPantry, setShowPantry] = useState(false);
@@ -390,7 +396,7 @@ function ShoppingListInner() {
     );
   }
 
-  if (!list || list.items.length === 0) {
+  if (!list) {
     return (
       <PageShell>
         <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-[400px] md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
@@ -413,7 +419,7 @@ function ShoppingListInner() {
               <ShoppingCart className="h-8 w-8 text-[#C4A882]" />
             </div>
             <p className="text-center text-[#6F5B4B]">No list for this week yet.</p>
-            <p className="text-center text-sm text-[#9E8B7E]">Plan this week's recipes first to generate a list.</p>
+            <p className="text-center text-sm text-[#9E8B7E]">Plan this week&apos;s recipes first to generate a list.</p>
             <button
               type="button"
               onClick={() => router.push("/dashboard")}
@@ -542,11 +548,18 @@ function ShoppingListInner() {
         </div>
 
         <div className="flex-1 overflow-y-auto pb-28 md:pb-0">
-          <div className="divide-y divide-[#F0E8DE]">
-            {groups.map(({ category, items }) => (
-              <CategorySection key={category} category={category} items={items} onToggle={toggleItem} />
-            ))}
-          </div>
+          {list.items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 px-8 py-16 text-center">
+              <p className="text-[#6F5B4B]">Your shopping list is empty.</p>
+              <p className="text-sm text-[#9E8B7E]">The recipes in this week&apos;s plan may not have ingredients linked yet.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-[#F0E8DE]">
+              {groups.map(({ category, items }) => (
+                <CategorySection key={category} category={category} items={items} onToggle={toggleItem} />
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="fixed inset-x-0 bottom-0 border-t border-[#F0E8DE] bg-white px-5 pb-[calc(env(safe-area-inset-bottom)+16px)] pt-4 shadow-[0_-8px_24px_rgba(58,42,31,0.06)] md:relative md:inset-auto md:bottom-auto md:shadow-none md:border-t md:px-5 md:pb-5 md:pt-4">

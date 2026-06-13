@@ -130,6 +130,20 @@ function resolveStepImageUrl(imageAssets: { url: string }[]): string | null {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+function goBack(router: ReturnType<typeof useRouter>) {
+  if (typeof document !== "undefined" && document.referrer) {
+    try {
+      if (new URL(document.referrer).origin === globalThis.location.origin) {
+        router.back();
+        return;
+      }
+    } catch {
+      // malformed referrer — fall through
+    }
+  }
+  router.push("/dashboard");
+}
+
 export default function RecipePage() {
   const params = useParams();
   const router = useRouter();
@@ -245,7 +259,7 @@ export default function RecipePage() {
           <section className="flex h-full flex-col bg-background px-5 pb-8 pt-16">
             <button
               type="button"
-              onClick={() => router.push("/dashboard")}
+              onClick={() => goBack(router)}
               className="absolute left-4 top-4 z-20 rounded-full bg-[#EADFCE] p-2.5 text-[#3A2A1F]"
             >
               <ArrowLeft size={18} />
@@ -276,7 +290,7 @@ export default function RecipePage() {
       <SubPageShell>
         <main className="mx-auto flex h-full w-full max-w-[390px] flex-col items-center justify-center gap-4 bg-background md:max-w-[680px]">
           <p className="text-[#6F5B4B]">Recipe not found</p>
-          <button type="button" onClick={() => router.push("/dashboard")} className="text-sm text-[#5FA66B] underline">
+          <button type="button" onClick={() => goBack(router)} className="text-sm text-[#5FA66B] underline">
             Go back
           </button>
         </main>
@@ -302,7 +316,7 @@ export default function RecipePage() {
         >
           <button
             type="button"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => goBack(router)}
             className="absolute left-4 top-4 z-20 rounded-full bg-[#EADFCE] p-2.5 text-[#3A2A1F]"
           >
             <ArrowLeft size={18} />

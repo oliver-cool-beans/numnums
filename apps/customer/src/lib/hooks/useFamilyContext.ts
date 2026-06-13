@@ -41,10 +41,10 @@ export function useFamilyContext(userId: string | undefined): FamilyContext | nu
       const [familyResult, ownerResult] = await Promise.all([
         supabase.from("families").select("name").eq("id", familyId).maybeSingle(),
         membership.role === "owner"
-          ? Promise.resolve({ data: { user_id: userId, user: null as { name: string | null } | null }, error: null })
+          ? Promise.resolve({ data: { user_id: userId }, error: null })
           : supabase
               .from("family_members")
-              .select("user_id, user:users(name)")
+              .select("user_id")
               .eq("family_id", familyId)
               .eq("role", "owner")
               .maybeSingle(),
@@ -62,15 +62,12 @@ export function useFamilyContext(userId: string | undefined): FamilyContext | nu
         return;
       }
 
-      const ownerRow = ownerResult.data as { user_id: string; user: { name: string | null } | { name: string | null }[] | null };
-      const ownerUser = Array.isArray(ownerRow.user) ? (ownerRow.user[0] ?? null) : ownerRow.user;
-
       if (isMounted) {
         setContext({
           familyId,
           familyName: familyResult.data.name,
-          ownerId: ownerRow.user_id,
-          ownerName: ownerUser?.name ?? null,
+          ownerId: ownerResult.data.user_id,
+          ownerName: null,
           isOwner: membership.role === "owner",
         });
       }

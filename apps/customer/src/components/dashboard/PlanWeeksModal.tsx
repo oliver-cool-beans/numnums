@@ -185,18 +185,22 @@ export function PlanWeeksModal({ userId, onClose, onViewWeek }: PlanWeeksModalPr
                 <div
                   key={key}
                   className={cn(
-                    "flex items-center justify-between rounded-[20px] border px-4 py-3.5",
+                    "relative flex items-center justify-between rounded-[20px] border px-4 py-3.5",
                     w.isPlanned
                       ? "border-[#7CB342]/40 bg-[#F4FFE8]"
                       : "border-[#E8DCCB] bg-white",
                   )}
                 >
-                  <button
-                    type="button"
-                    onClick={() => w.isPlanned && onViewWeek(w.week, w.year)}
-                    disabled={!w.isPlanned}
-                    className={cn("text-left", w.isPlanned && "underline-offset-2 hover:underline")}
-                  >
+                  {/* Full-row tap target for planned weeks */}
+                  {w.isPlanned && (
+                    <button
+                      type="button"
+                      onClick={() => onViewWeek(w.week, w.year)}
+                      aria-label={`View ${w.isCurrent ? "this week" : w.label}`}
+                      className="absolute inset-0 rounded-[20px]"
+                    />
+                  )}
+                  <div className="relative z-10 text-left">
                     <p className="text-sm font-semibold text-[#3A2A1F]">
                       {w.isCurrent ? "This week" : w.label}
                     </p>
@@ -209,22 +213,27 @@ export function PlanWeeksModal({ userId, onClose, onViewWeek }: PlanWeeksModalPr
                         {w.isCurrent ? `Not yet planned · ${w.label}` : "Not yet planned"}
                       </p>
                     )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleGenerateWeek(w)}
-                    disabled={isBusy}
-                    aria-label={w.isPlanned ? `Regenerate ${w.label}` : `Generate ${w.label}`}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[#3A2A1F] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#5C4A3A] disabled:opacity-40"
-                  >
-                    {isGenerating ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <Sparkles className="size-3.5" />
-                    )}
-                    {w.isPlanned ? "Regenerate" : "Generate"}
-                    <ChevronRight className="size-3" />
-                  </button>
+                  </div>
+                  {!w.isPlanned && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); void handleGenerateWeek(w); }}
+                      disabled={isBusy}
+                      aria-label={`Generate ${w.label}`}
+                      className="relative z-10 inline-flex items-center gap-1.5 rounded-full bg-[#3A2A1F] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#5C4A3A] disabled:opacity-40"
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="size-3.5" />
+                      )}
+                      Generate
+                      <ChevronRight className="size-3" />
+                    </button>
+                  )}
+                  {w.isPlanned && (
+                    <ChevronRight className="relative z-10 size-4 shrink-0 text-[#7CB342]" />
+                  )}
                 </div>
               );
             })}

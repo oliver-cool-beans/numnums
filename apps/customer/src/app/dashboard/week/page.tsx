@@ -163,6 +163,9 @@ function WeekViewInner() {
           day={recipeSwap.target.day}
           title="Swap recipe"
           currentRecipeId={recipeSwap.target.currentRecipeId}
+          currentRecipeName={
+            mealPlan?.days.find((d) => d.day === recipeSwap.target?.day)?.recipe?.name ?? null
+          }
           recentRecipeIds={recipeSwap.recentRecipeIds}
           onCancel={recipeSwap.close}
           onSelect={(recipe) => void recipeSwap.handleSelect(recipe)}

@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, Check, ChevronRight, Loader2, Search, Shuffle } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Check, ChevronRight, ExternalLink, Loader2, Search, Shuffle } from "lucide-react";
 import { toast } from "@/lib/toast";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import {
   chunkRecipes,
   fetchOnboardingRecipes,
   getFilteredRecipes,
+  searchRecipesByName,
 } from "@/lib/recipeSchedule";
 import { fetchDietaryPreferences } from "@/lib/dietaryPreferences";
 
@@ -23,6 +25,7 @@ type RecipeSwapPickerProps = {
   day: Weekday;
   title: string;
   currentRecipeId: string | null;
+  currentRecipeName?: string | null;
   recentRecipeIds: Set<string>;
   onCancel: () => void;
   onSelect: (recipe: OnboardingRecipe) => void;
@@ -41,6 +44,7 @@ export function RecipeSwapPicker({
   day,
   title,
   currentRecipeId,
+  currentRecipeName,
   recentRecipeIds,
   onCancel,
   onSelect,
@@ -49,6 +53,8 @@ export function RecipeSwapPicker({
   const [preferences, setPreferences] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<OnboardingRecipe[] | null>(null);
+  const [searching, setSearching] = useState(false);
   const [page, setPage] = useState(0);
   const [shownRandomIds, setShownRandomIds] = useState<string[]>([]);
 
@@ -60,7 +66,7 @@ export function RecipeSwapPicker({
         const shuffled = [...allRecipes];
         for (let i = shuffled.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
         setRecipes(shuffled);
         setPreferences(savedPreferences);
@@ -74,13 +80,42 @@ export function RecipeSwapPicker({
     return () => { isMounted = false; };
   }, [userId]);
 
+  // Server-side search when query has 2+ chars
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    let isMounted = true;
+    setSearching(true);
+    searchRecipesByName(trimmed)
+      .then((results) => {
+        if (isMounted) setSearchResults(results);
+      })
+      .catch(() => {
+        if (isMounted) setSearchResults([]);
+      })
+      .finally(() => {
+        if (isMounted) setSearching(false);
+      });
+    return () => { isMounted = false; };
+  }, [query]);
+
   const filteredPool = useMemo(() => getFilteredRecipes(recipes, preferences), [recipes, preferences]);
 
   const visibleRecipes = useMemo(() => {
     const trimmed = query.trim();
-    if (!trimmed) return filteredPool;
-    return filteredPool.filter((recipe) => matchesSearch(recipe, trimmed));
-  }, [filteredPool, query]);
+    if (trimmed.length >= 2 && searchResults !== null) {
+      // Server search results — apply dietary preference filter client-side
+      return getFilteredRecipes(searchResults, preferences);
+    }
+    if (trimmed.length > 0) {
+      // Query too short for server search — fall back to local substring match
+      return filteredPool.filter((recipe) => matchesSearch(recipe, trimmed));
+    }
+    return filteredPool;
+  }, [filteredPool, searchResults, preferences, query]);
 
   const pages = useMemo(() => chunkRecipes(visibleRecipes), [visibleRecipes]);
   const activePage = pages[page] ?? [];
@@ -88,6 +123,7 @@ export function RecipeSwapPicker({
   const handleSearchChange = (value: string) => {
     setQuery(value);
     setPage(0);
+    if (value.trim().length < 2) setSearchResults(null);
   };
 
   const handleRandom = () => {
@@ -122,8 +158,24 @@ export function RecipeSwapPicker({
           <div aria-hidden="true" className="size-11" />
         </div>
 
+        {currentRecipeId && currentRecipeName && (
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-sm text-[#6F5B4B]">
+            <span>Replacing:</span>
+            <Link
+              href={`/dashboard/recipes/${currentRecipeId}`}
+              className="flex items-center gap-1 font-medium text-[#3A2A1F] underline underline-offset-2"
+            >
+              {currentRecipeName}
+              <ExternalLink className="size-3.5 shrink-0" />
+            </Link>
+          </div>
+        )}
+
         <div className="mt-4 flex items-center gap-2 rounded-full border border-[#E8DCCB] bg-white px-4 py-2.5 shadow-sm">
-          <Search className="size-4 text-[#9E8B7E]" />
+          {searching
+            ? <Loader2 className="size-4 shrink-0 animate-spin text-[#9E8B7E]" />
+            : <Search className="size-4 shrink-0 text-[#9E8B7E]" />
+          }
           <input
             value={query}
             onChange={(e) => handleSearchChange(e.target.value)}
