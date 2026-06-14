@@ -68,7 +68,8 @@ async function fetchRecipes(filter: FilterDef): Promise<Recipe[]> {
 
   if (filter.id !== "all") {
     if (filter.maxMinutes !== undefined) {
-      q = q.not("total_minutes", "is", null).lte("total_minutes", filter.maxMinutes);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      q = (q.not("total_minutes", "is", null) as any).lte("total_minutes", filter.maxMinutes);
     } else if (filter.keywords?.length) {
       const parts = filter.keywords.flatMap((k) => [
         `name.ilike.%${k}%`,
