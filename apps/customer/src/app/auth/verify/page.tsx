@@ -1,10 +1,13 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail } from "lucide-react";
 import { supabase } from "@/lib/supabase-client";
 import { toast } from "@/lib/toast";
+
+const DEV_EMAIL = process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL;
+const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD;
 
 const DIGIT_COUNT = 6;
 const DIGIT_KEYS = ["d0", "d1", "d2", "d3", "d4", "d5"] as const;
@@ -13,6 +16,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // ── Email step ───────────────────────────────────────────────────────────────
 
 function EmailStep({ onSent }: { onSent: (email: string) => void }) {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const isValid = EMAIL_PATTERN.test(email.trim());
@@ -31,6 +35,18 @@ function EmailStep({ onSent }: { onSent: (email: string) => void }) {
       return;
     }
     onSent(email.trim());
+  }
+
+  async function handleDevBypass() {
+    if (!DEV_EMAIL || !DEV_PASSWORD) return;
+    setSending(true);
+    const { error } = await supabase.auth.signInWithPassword({ email: DEV_EMAIL, password: DEV_PASSWORD });
+    if (error) {
+      toast.error(error.message);
+      setSending(false);
+      return;
+    }
+    router.push("/dashboard");
   }
 
   return (
@@ -65,6 +81,17 @@ function EmailStep({ onSent }: { onSent: (email: string) => void }) {
       </form>
 
       <p className="mt-4 text-center text-[13px] text-[#6B7280]">No password needed</p>
+
+      {process.env.NODE_ENV === "development" && DEV_EMAIL && DEV_PASSWORD && (
+        <button
+          type="button"
+          onClick={handleDevBypass}
+          disabled={sending}
+          className="mt-3 w-full rounded-xl border border-dashed border-orange-400 py-2 text-sm text-orange-500 hover:bg-orange-50 disabled:opacity-60"
+        >
+          [dev] sign in as {DEV_EMAIL}
+        </button>
+      )}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import {
   type Weekday,
 } from "./recipeSchedule";
 import { fetchDietaryPreferences } from "./dietaryPreferences";
-import { getWeekAtOffset } from "./utils";
+import { dateToIsoWeek, getWeekMondayDate } from "./utils";
 
 const DEFAULT_PLAN_DAYS: Weekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday"];
 
@@ -20,9 +20,12 @@ export async function generateWeekPlan(
   let effectiveExclude = excludeIds;
 
   if (!effectiveExclude) {
-    const lastWeek = getWeekAtOffset(-1);
-    const lastWeekIds = await fetchWeekRecipeIds(userId, lastWeek.week, lastWeek.year);
-    effectiveExclude = new Set(lastWeekIds);
+    const targetMonday = getWeekMondayDate(week, year);
+    const prevMonday = new Date(targetMonday);
+    prevMonday.setDate(targetMonday.getDate() - 7);
+    const prevWeek = dateToIsoWeek(prevMonday);
+    const prevWeekIds = await fetchWeekRecipeIds(userId, prevWeek.week, prevWeek.year);
+    effectiveExclude = new Set(prevWeekIds);
   }
 
   const [allRecipes, preferences] = await Promise.all([
@@ -35,7 +38,53 @@ export async function generateWeekPlan(
   const filteredPool = getFilteredRecipes(effectivePool, preferences);
   const meals = buildSchedule([], filteredPool, DEFAULT_PLAN_DAYS, preferences);
   await persistWeekPlan(userId, meals, week, year);
+
+  // Remove any pending swap suggestions for this week — they're stale after a full regen.
+  await supabase
+    .from("recipe_swap_suggestions")
+    .delete()
+    .eq("meal_plan_owner_id", userId)
+    .eq("week_number", week)
+    .eq("year", year)
+    .eq("status", "pending");
+
   return meals;
+}
+
+export async function swapWeekDays(
+  userId: string,
+  week: number,
+  year: number,
+  dayA: Weekday,
+  dayB: Weekday,
+): Promise<void> {
+  const colA = `${dayA}_recipe_id`;
+  const colB = `${dayB}_recipe_id`;
+
+  const { data: plan, error: fetchErr } = await supabase
+    .from("user_meal_plans")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("week_number", week)
+    .eq("year", year)
+    .maybeSingle();
+
+  if (fetchErr) throw fetchErr;
+  if (!plan) throw new Error("No meal plan found");
+
+  const row = plan as Record<string, string | null>;
+  const recipeA = row[colA] ?? null;
+  const recipeB = row[colB] ?? null;
+
+  const { error: updateErr } = await supabase
+    .from("user_meal_plans")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update({ [colA]: recipeB, [colB]: recipeA } as any)
+    .eq("user_id", userId)
+    .eq("week_number", week)
+    .eq("year", year);
+
+  if (updateErr) throw updateErr;
 }
 
 type IngredientLinkRow = {

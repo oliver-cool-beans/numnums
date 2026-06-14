@@ -48,18 +48,20 @@ export function getGreeting(userName: string | null = "Sam"): string {
   return `Hey, ${firstName} 👋`
 }
 
+export function dateToIsoWeek(date: Date): { week: number; year: number } {
+  const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const day = utcDate.getUTCDay() || 7
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1))
+  const week = Math.ceil((((utcDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+  return { week, year: utcDate.getUTCFullYear() }
+}
+
 export function getWeekAtOffset(offsetWeeks: number): { week: number; year: number } {
   const today = new Date()
   const future = new Date(today)
   future.setDate(today.getDate() + offsetWeeks * 7)
-
-  const utcDate = new Date(Date.UTC(future.getFullYear(), future.getMonth(), future.getDate()))
-  const day = utcDate.getUTCDay() || 7
-  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - day)
-
-  const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1))
-  const week = Math.ceil((((utcDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
-  return { week, year: utcDate.getUTCFullYear() }
+  return dateToIsoWeek(future)
 }
 
 export function getWeekMondayDate(week: number, year: number): Date {

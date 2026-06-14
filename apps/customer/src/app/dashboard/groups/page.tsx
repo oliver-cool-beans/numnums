@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -18,12 +18,12 @@ type Family = { id: string; name: string; members: Member[] };
 
 function useFamilies(userId: string | undefined) {
   const [families, setFamilies] = useState<Family[] | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const loadRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
     if (!userId) return;
 
-    const loadFamilies = async () => {
+    const load = async () => {
       const { data: memberships, error: membershipError } = await supabase
         .from("family_members")
         .select("family_id")
@@ -46,10 +46,12 @@ function useFamilies(userId: string | undefined) {
       ]);
 
       if (familyError || memberError) {
-        console.error("[groups] Failed to load families", familyError ?? memberError);
+        console.error("[groups] Failed to load families/members", { familyError, memberError });
         setFamilies([]);
         return;
       }
+
+      console.debug("[groups] memberRows", memberRows);
 
       type MemberRow = { family_id: string; user_id: string; role: "owner" | "member"; user: { id: string; name: string | null } | { id: string; name: string | null }[] | null };
 
@@ -66,10 +68,55 @@ function useFamilies(userId: string | undefined) {
       setFamilies(list);
     };
 
-    loadFamilies();
-  }, [userId, refreshKey]);
+    loadRef.current = load;
+    void load();
 
-  const reload = useCallback(() => setRefreshKey((key) => key + 1), []);
+    // accept_invite is SECURITY DEFINER so its inserts may be dropped by
+    // Supabase Realtime RLS evaluation. Subscribe to both the current user's
+    // own membership changes and any invite-table changes so whichever event
+    // arrives first triggers a reload. Window focus is the reliable fallback.
+    const channel = supabase
+      .channel(`families:${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "family_members", filter: `user_id=eq.${userId}` },
+        () => { void loadRef.current(); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "invites", filter: `inviter_id=eq.${userId}` },
+        () => { void loadRef.current(); },
+      )
+      .subscribe();
+
+    const onFocus = () => { void loadRef.current(); };
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      void supabase.removeChannel(channel);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [userId]);
+
+  // After we know the family, subscribe to member changes within it so the
+  // owner sees new members join without a manual refresh.
+  const familyId = families?.[0]?.id;
+  useEffect(() => {
+    if (!familyId) return;
+
+    const channel = supabase
+      .channel(`family-members:${familyId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "family_members", filter: `family_id=eq.${familyId}` },
+        () => { void loadRef.current(); },
+      )
+      .subscribe();
+
+    return () => { void supabase.removeChannel(channel); };
+  }, [familyId]);
+
+  const reload = useCallback(() => { void loadRef.current(); }, []);
 
   return { families, reload };
 }
@@ -259,7 +306,7 @@ export default function GroupsPage() {
         <header className="flex items-center gap-3 px-5 pb-3 pt-14">
           <button
             type="button"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.back()}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm transition-colors hover:bg-[#F5EDE0]"
             aria-label="Go back"
           >

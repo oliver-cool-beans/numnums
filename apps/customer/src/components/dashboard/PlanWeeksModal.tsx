@@ -13,6 +13,7 @@ type WeekEntry = {
   week: number;
   year: number;
   label: string;
+  relativeLabel: string;
   isCurrent: boolean;
   isPlanned: boolean;
 };
@@ -51,11 +52,14 @@ export function PlanWeeksModal({ userId, onClose, onViewWeek }: PlanWeeksModalPr
         (data ?? []).map((row: { week_number: number; year: number }) => `${row.year}-${row.week_number}`),
       );
 
+      const relativeLabels = ["This week", "Next week", "In 2 weeks", "In 3 weeks", "In 4 weeks"];
+
       setWeeks(
         targets.map(({ week, year }, index) => ({
           week,
           year,
           label: getWeekLabel(week, year),
+          relativeLabel: relativeLabels[index] ?? `In ${index} weeks`,
           isCurrent: index === 0,
           isPlanned: planned.has(`${year}-${week}`),
         })),
@@ -202,16 +206,11 @@ export function PlanWeeksModal({ userId, onClose, onViewWeek }: PlanWeeksModalPr
                   )}
                   <div className="relative z-10 text-left">
                     <p className="text-sm font-semibold text-[#3A2A1F]">
-                      {w.isCurrent ? "This week" : w.label}
+                      {w.relativeLabel}
                     </p>
-                    {w.isPlanned ? (
-                      <p className="mt-0.5 text-xs text-[#558B2F]">
-                        {w.isCurrent ? `Planned · ${w.label}` : "Planned"}
-                      </p>
-                    ) : (
-                      <p className="mt-0.5 text-xs text-[#9E8B7E]">
-                        {w.isCurrent ? `Not yet planned · ${w.label}` : "Not yet planned"}
-                      </p>
+                    <p className="mt-0.5 text-xs text-[#9E8B7E]">{w.label}</p>
+                    {w.isPlanned && (
+                      <p className="mt-0.5 text-xs text-[#558B2F]">Planned</p>
                     )}
                   </div>
                   {!w.isPlanned && (

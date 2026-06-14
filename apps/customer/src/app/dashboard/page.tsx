@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, Loader2, Shuffle, X } from "lucide-react";
 import {
@@ -12,7 +12,6 @@ import {
   useFriendsToday,
   useRecipeSwap,
   useFamilyContext,
-  usePendingSwapCount,
 } from "@/lib/hooks";
 import {
   Header,
@@ -25,14 +24,13 @@ import {
   FriendsTodayBlock,
   BottomNav,
   SideNav,
-  PlanWeeksModal,
   RecipeSwapPicker,
   EnableNotificationsPrompt,
+  SwapSuggestionsBlock,
 } from "@/components/dashboard";
 import { MealPlanOnboarding } from "@/components/onboarding/MealPlanOnboarding";
 import { NumnumsBackground } from "@/components/ui/NumnumsBackground";
-import { LoadingScreen } from "@/components/ui/LoadingScreen";
-import { getCurrentWeek, getDayOfWeek, getWeekAtOffset } from "@/lib/utils";
+import { getCurrentWeek, getDayOfWeek, getWeekAtOffset, getWeekLabel } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import type { Weekday } from "@/lib/recipeSchedule";
 import {
@@ -40,6 +38,8 @@ import {
   peekQueuedNotificationPrompt,
   type NotificationPromptCopy,
 } from "@/lib/notificationPrompts";
+import { swapWeekDays } from "@/lib/mealPlanActions";
+import { toast } from "@/lib/toast";
 
 type DayMenuTarget = { day: Weekday; recipeId: string; recipeName: string | null };
 
@@ -91,41 +91,6 @@ function DayActionSheet({
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── Pending swaps banner (owners only) ──────────────────────────────────────
-
-function PendingSwapsBanner({
-  count,
-  onReview,
-  className,
-}: {
-  count: number;
-  onReview: () => void;
-  className?: string;
-}) {
-  return (
-    <div className={className ?? "mx-5 mb-4"}>
-      <button
-        type="button"
-        onClick={onReview}
-        className="flex w-full items-center justify-between rounded-[20px] border border-[#F0E8DE] bg-[#FFF7E8] px-4 py-3 text-left transition-colors hover:bg-[#FFF0CC]"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFE7A3]">
-            <Shuffle aria-hidden="true" className="h-4 w-4 text-[#8B7355]" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-[#3A2A1F]">
-              {count === 1 ? "1 swap suggestion" : `${count} swap suggestions`} pending
-            </p>
-            <p className="text-xs text-[#6F5B4B]">Tap to review in your group</p>
-          </div>
-        </div>
-        <span className="flex-shrink-0 text-xs font-semibold text-[#B08D52]">Review</span>
-      </button>
     </div>
   );
 }
@@ -184,25 +149,12 @@ function PlanAheadCard({
   );
 }
 
-// ─── Full-screen overlays ─────────────────────────────────────────────────────
-
-function FullScreenOverlay({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-white">
-      <div className="mx-auto flex min-h-full w-full max-w-[390px] flex-col md:max-w-[600px]">
-        {children}
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 function DashboardInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"week" | "list" | "profile">("week");
-  const [showPlanModal, setShowPlanModal] = useState(false);
   const [dayMenuTarget, setDayMenuTarget] = useState<DayMenuTarget | null>(null);
   const [notificationPrompt, setNotificationPrompt] = useState<NotificationPromptCopy | null>(() =>
     peekQueuedNotificationPrompt(),
@@ -248,11 +200,6 @@ function DashboardInner() {
     refetchWeekPreview();
   });
 
-  const pendingSwapCount = usePendingSwapCount(
-    familyContext?.familyId,
-    familyContext?.isOwner ?? false,
-  );
-
   const getTomorrowRecipe = (): { name: string; id: string } | null => {
     if (!mealPlan) return null;
     const dayOfWeek = getDayOfWeek();
@@ -283,11 +230,6 @@ function DashboardInner() {
     router.push(`/dashboard/shopping-list?week=${week}&year=${year}`);
   };
 
-  const handleViewWeek = (week: number, year: number) => {
-    setShowPlanModal(false);
-    router.push(`/dashboard/week?week=${week}&year=${year}`);
-  };
-
   const handleViewFullWeek = () => {
     const { week, year } = getCurrentWeek();
     router.push(`/dashboard/week?week=${week}&year=${year}`);
@@ -311,6 +253,17 @@ function DashboardInner() {
     setDayMenuTarget(null);
   };
 
+  const handleSwapDays = useCallback(
+    (dayA: Weekday, dayB: Weekday) => {
+      if (!user) return;
+      const { week, year } = getCurrentWeek();
+      void swapWeekDays(user.id, week, year, dayA, dayB)
+        .then(() => { refetchMealPlan(); refetchWeekPreview(); })
+        .catch(() => { toast.error("Failed to save. Try again."); refetchWeekPreview(); });
+    },
+    [user, refetchMealPlan, refetchWeekPreview],
+  );
+
   const handleSwapFromCard = () => {
     const dayOfWeek = getDayOfWeek();
     const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
@@ -324,19 +277,13 @@ function DashboardInner() {
     if (!userLoading && !user) router.replace("/");
   }, [user, userLoading, router]);
 
-  // We can't know whether to render the dashboard or redirect to "/" until the
-  // session resolves, so this is the rare full-page block — same screen as login.
-  if (userLoading) {
-    return <LoadingScreen title="Loading" message="Getting your account ready..." />;
-  }
-
-  if (!user) return null;
+  if (!userLoading && !user) return null;
 
   const skipOnboarding = searchParams.get("skipOnboarding") === "1";
   // Family members see the owner's plan; never prompt them to build their own.
-  const shouldShowOnboarding = !mealPlanLoading && !mealPlan && !skipOnboarding && !familyContext;
+  const shouldShowOnboarding = !userLoading && user && !mealPlanLoading && !mealPlan && !skipOnboarding && !familyContext;
 
-  if (shouldShowOnboarding) {
+  if (shouldShowOnboarding && user) {
     return (
       <div className="min-h-dvh w-full bg-white md:flex md:h-dvh md:overflow-hidden md:bg-[#FAF6F2]">
         <SideNav activeTab={activeTab} onTabChange={handleTabChange} onInviteFriends={() => router.push("/dashboard/friends")} onManageGroups={() => router.push("/dashboard/groups")} user={user} onSignOut={signOut} />
@@ -353,19 +300,19 @@ function DashboardInner() {
     );
   }
 
-  if (showPlanModal) {
-    return (
-      <FullScreenOverlay>
-        <PlanWeeksModal
-          userId={user.id}
-          onClose={() => setShowPlanModal(false)}
-          onViewWeek={handleViewWeek}
-        />
-      </FullScreenOverlay>
-    );
-  }
-
   const tomorrowRecipe = getTomorrowRecipe();
+
+  // Shopping list week label: "This week · 16 Jun – 22 Jun"
+  const { week: currentWeek, year: currentYear } = getCurrentWeek();
+  const currentWeekDateRange = getWeekLabel(currentWeek, currentYear);
+  const shoppingListWeekLabel = `This week · ${currentWeekDateRange}`;
+  // Show next-week prompt Thu (4), Fri (5), Sat (6), Sun (0)
+  const dayOfWeek = getDayOfWeek();
+  const isEndOfWeek = dayOfWeek === 0 || dayOfWeek >= 4;
+  const { week: nextWeek, year: nextYear } = getWeekAtOffset(1);
+  const nextWeekDateRange = getWeekLabel(nextWeek, nextYear);
+  const nextWeekShoppingLabel = isEndOfWeek ? `Next week · ${nextWeekDateRange}` : undefined;
+
   // The card has two very different final shapes ("today's recipe" hero vs.
   // "build my week" empty state). Once the meal plan resolves we know which one
   // we're heading toward, so pick the matching skeleton to avoid a layout jump —
@@ -393,7 +340,7 @@ function DashboardInner() {
               onManageGroups={() => router.push("/dashboard/groups")}
               onSignOut={signOut}
             />
-            <GreetingBlock userName={user.name} />
+            <GreetingBlock userName={user?.name ?? null} />
             {familyContext && (
               <button
                 type="button"
@@ -413,10 +360,12 @@ function DashboardInner() {
                 onDismiss={() => setNotificationPrompt(null)}
               />
             )}
-            {familyContext?.isOwner && pendingSwapCount > 0 && (
-              <PendingSwapsBanner
-                count={pendingSwapCount}
-                onReview={() => { const { week, year } = getCurrentWeek(); router.push(`/dashboard/week?week=${week}&year=${year}`); }}
+            {familyContext && user && (
+              <SwapSuggestionsBlock
+                familyId={familyContext.familyId}
+                ownerId={familyContext.ownerId}
+                currentUserId={user.id}
+                isOwner={familyContext.isOwner}
               />
             )}
             <div className="relative z-10">
@@ -424,7 +373,7 @@ function DashboardInner() {
                 recipe={todayRecipe || null}
                 hasMealPlan={Boolean(mealPlan)}
                 onBuildWeek={() => router.replace("/dashboard")}
-                onPlanAhead={() => setShowPlanModal(true)}
+                onPlanAhead={() => router.push("/dashboard/plan-ahead")}
                 onStartCooking={() => todayRecipeId && router.push(`/dashboard/recipes/${todayRecipeId}`)}
                 isLoading={currentRecipeLoading}
                 loadingKind={currentRecipeLoadingKind}
@@ -434,9 +383,10 @@ function DashboardInner() {
                 <WeekPreviewCards
                   days={weekPreview}
                   onDayClick={(recipeId) => router.push(`/dashboard/recipes/${recipeId}`)}
-                  onLongPressDay={handleLongPressDay}
+                  onLongPressDay={isFamilyMember ? handleLongPressDay : undefined}
+                  onSwapDays={isFamilyMember ? undefined : handleSwapDays}
                   onViewFullWeek={handleViewFullWeek}
-                  onBuildNextWeek={() => setShowPlanModal(true)}
+                  onBuildNextWeek={() => router.push("/dashboard/plan-ahead")}
                   isLoading={weekPreviewLoading}
                 />
               )}
@@ -445,10 +395,13 @@ function DashboardInner() {
                 hasMealPlan={Boolean(mealPlan)}
                 onViewList={() => router.push("/dashboard/shopping-list")}
                 onReviewList={() => router.push("/dashboard/shopping-list")}
+                onShopNextWeek={handleShopNextWeek}
                 isLoading={listLoading}
+                weekLabel={shoppingListWeekLabel}
+                nextWeekLabel={nextWeekShoppingLabel}
               />
               <PlanAheadCard
-                onOpenModal={() => setShowPlanModal(true)}
+                onOpenModal={() => router.push("/dashboard/plan-ahead")}
                 onShopNextWeek={handleShopNextWeek}
               />
               <FriendsTodayBlock
@@ -477,7 +430,7 @@ function DashboardInner() {
           <div className="mb-1 flex items-center justify-between">
             <div>
               <h1 className="text-[30px] font-medium tracking-[-0.02em] text-[#3A2A1F]">
-                {user.name ? `Hey, ${user.name.split(" ")[0]} 👋` : "Hey there 👋"}
+                {user?.name ? `Hey, ${user.name.split(" ")[0]} 👋` : "Hey there 👋"}
               </h1>
               <p className="mt-1 text-base text-[#6F5B4B]">Here&apos;s what&apos;s next.</p>
               {familyContext && (
@@ -506,11 +459,13 @@ function DashboardInner() {
               onDismiss={() => setNotificationPrompt(null)}
             />
           )}
-          {familyContext?.isOwner && pendingSwapCount > 0 && (
-            <PendingSwapsBanner
+          {familyContext && user && (
+            <SwapSuggestionsBlock
               className="mb-5"
-              count={pendingSwapCount}
-              onReview={() => { const { week, year } = getCurrentWeek(); router.push(`/dashboard/week?week=${week}&year=${year}`); }}
+              familyId={familyContext.familyId}
+              ownerId={familyContext.ownerId}
+              currentUserId={user.id}
+              isOwner={familyContext.isOwner}
             />
           )}
 
@@ -520,7 +475,7 @@ function DashboardInner() {
               recipe={todayRecipe || null}
               hasMealPlan={Boolean(mealPlan)}
               onBuildWeek={() => router.replace("/dashboard")}
-              onPlanAhead={() => setShowPlanModal(true)}
+              onPlanAhead={() => router.push("/dashboard/plan-ahead")}
               onStartCooking={() => todayRecipeId && router.push(`/dashboard/recipes/${todayRecipeId}`)}
               isLoading={currentRecipeLoading}
               loadingKind={currentRecipeLoadingKind}
@@ -540,9 +495,10 @@ function DashboardInner() {
                   flat
                   days={weekPreview}
                   onDayClick={(recipeId) => router.push(`/dashboard/recipes/${recipeId}`)}
-                  onLongPressDay={handleLongPressDay}
+                  onLongPressDay={isFamilyMember ? handleLongPressDay : undefined}
+                  onSwapDays={isFamilyMember ? undefined : handleSwapDays}
                   onViewFullWeek={handleViewFullWeek}
-                  onBuildNextWeek={() => setShowPlanModal(true)}
+                  onBuildNextWeek={() => router.push("/dashboard/plan-ahead")}
                   isLoading={weekPreviewLoading}
                 />
               </div>
@@ -554,12 +510,15 @@ function DashboardInner() {
               hasMealPlan={Boolean(mealPlan)}
               onViewList={() => router.push("/dashboard/shopping-list")}
               onReviewList={() => router.push("/dashboard/shopping-list")}
+              onShopNextWeek={handleShopNextWeek}
               isLoading={listLoading}
+              weekLabel={shoppingListWeekLabel}
+              nextWeekLabel={nextWeekShoppingLabel}
             />
 
             <PlanAheadCard
               className="overflow-hidden rounded-[20px] bg-white shadow-[0_2px_12px_rgba(58,42,31,0.06)]"
-              onOpenModal={() => setShowPlanModal(true)}
+              onOpenModal={() => router.push("/dashboard/plan-ahead")}
               onShopNextWeek={handleShopNextWeek}
             />
 
@@ -598,7 +557,7 @@ function DashboardInner() {
         />
       )}
 
-      {!isFamilyMember && recipeSwap.target && (
+      {!isFamilyMember && recipeSwap.target && user && (
         <RecipeSwapPicker
           userId={user.id}
           day={recipeSwap.target.day}

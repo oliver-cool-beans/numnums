@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { Loader2, Shuffle, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ArrowRight, Loader2, Shuffle, ThumbsDown, ThumbsUp } from "lucide-react";
 import { toast } from "@/lib/toast";
 
 import { cn, getWeekAtOffset } from "@/lib/utils";
@@ -40,6 +40,19 @@ type PickerState = {
 type PendingAction = "select" | "approve" | "dismiss" | "vote-yes" | "vote-no";
 type PendingState = { day: Weekday; action: PendingAction } | null;
 
+function RecipeThumb({ imageUrl, name }: { imageUrl: string | null | undefined; name: string }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[12px] bg-[#E7D9CD]">
+        {imageUrl && (
+          <Image src={imageUrl} alt={name} fill className="object-cover" sizes="56px" />
+        )}
+      </div>
+      <p className="w-14 text-center text-[10px] leading-tight text-[#6F5B4B] line-clamp-2">{name}</p>
+    </div>
+  );
+}
+
 function SuggestionPanel({
   suggestion,
   isOwner,
@@ -61,47 +74,77 @@ function SuggestionPanel({
   onVoteYes: () => void;
   onVoteNo: () => void;
 }) {
-  const hasVotes = suggestion.yesVotes > 0 || suggestion.noVotes > 0;
+  const totalVotes = suggestion.yesVotes + suggestion.noVotes;
 
   return (
-    <div className="mt-2.5 rounded-[14px] bg-[#FFF7E8] px-3 py-2.5">
-      <p className="text-xs leading-5 text-[#6F5B4B]">
-        <span className="font-semibold text-[#3A2A1F]">{firstName(suggestion.suggestedByName)}</span>{" "}
-        suggested swapping in{" "}
-        <span className="font-semibold text-[#3A2A1F]">{suggestion.proposedRecipe.name}</span>
+    <div className="mt-2.5 rounded-[14px] bg-[#FFF7E8] px-3 py-3">
+      {/* Who suggested */}
+      <p className="mb-2.5 text-xs text-[#6F5B4B]">
+        {isOwnSuggestion
+          ? <span className="font-semibold text-[#B08D52]">Your suggestion</span>
+          : <><span className="font-semibold text-[#3A2A1F]">{firstName(suggestion.suggestedByName)}</span> suggested a swap</>
+        }
       </p>
-      {hasVotes && (
-        <p className="mt-1 text-[0.68rem] text-[#9E8B7E]">
-          {suggestion.yesVotes} yes · {suggestion.noVotes} no
-        </p>
+
+      {/* Visual swap: current → proposed */}
+      <div className="flex items-center gap-2">
+        {suggestion.currentRecipe ? (
+          <RecipeThumb imageUrl={suggestion.currentRecipe.image_url} name={suggestion.currentRecipe.name} />
+        ) : (
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex h-14 w-14 items-center justify-center rounded-[12px] bg-[#F0E8DE]">
+              <span className="text-[10px] text-[#B7A696]">Day off</span>
+            </div>
+            <p className="w-14 text-center text-[10px] leading-tight text-[#6F5B4B]">Day off</p>
+          </div>
+        )}
+        <ArrowRight className="size-4 shrink-0 text-[#B08D52]" />
+        <RecipeThumb imageUrl={suggestion.proposedRecipe.image_url} name={suggestion.proposedRecipe.name} />
+      </div>
+
+      {/* Vote tally */}
+      {totalVotes > 0 && (
+        <div className="mt-2.5 flex items-center gap-2">
+          <span className="rounded-full bg-[#E7F6DF] px-2 py-0.5 text-[11px] font-semibold text-[#558B2F]">
+            {suggestion.yesVotes} yes
+          </span>
+          <span className="rounded-full bg-[#FDE8E8] px-2 py-0.5 text-[11px] font-semibold text-[#C0392B]">
+            {suggestion.noVotes} no
+          </span>
+        </div>
       )}
+
+      {/* Actions */}
       {isOwnSuggestion ? (
-        <p className="mt-1.5 text-[0.68rem] font-medium uppercase tracking-wide text-[#B08D52]">
-          Waiting for votes
+        <p className="mt-2 text-[0.68rem] font-medium uppercase tracking-wide text-[#B08D52]">
+          Waiting for the planner to review
         </p>
       ) : isOwner ? (
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onApprove}
-            disabled={isPending}
-            className="inline-flex items-center gap-1.5 rounded-full bg-[#7CB342] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#689F38] disabled:opacity-50"
-          >
-            {isPending && pendingAction === "approve" ? <Loader2 className="size-3.5 animate-spin" /> : <ThumbsUp className="size-3.5" />}
-            Approve
-          </button>
-          <button
-            type="button"
-            onClick={onDismiss}
-            disabled={isPending}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#D9CCBB] bg-white px-3 py-1.5 text-xs font-semibold text-[#3A2A1F] transition-colors hover:bg-[#F5EDE0] disabled:opacity-50"
-          >
-            {isPending && pendingAction === "dismiss" ? <Loader2 className="size-3.5 animate-spin" /> : <ThumbsDown className="size-3.5" />}
-            Dismiss
-          </button>
-        </div>
+        <>
+          <p className="mt-2 text-[0.68rem] text-[#9E8B7E]">Only you can confirm this swap.</p>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onApprove}
+              disabled={isPending}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#7CB342] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#689F38] disabled:opacity-50"
+            >
+              {isPending && pendingAction === "approve" ? <Loader2 className="size-3.5 animate-spin" /> : <ThumbsUp className="size-3.5" />}
+              Approve swap
+            </button>
+            <button
+              type="button"
+              onClick={onDismiss}
+              disabled={isPending}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#D9CCBB] bg-white px-3 py-1.5 text-xs font-semibold text-[#3A2A1F] transition-colors hover:bg-[#F5EDE0] disabled:opacity-50"
+            >
+              {isPending && pendingAction === "dismiss" ? <Loader2 className="size-3.5 animate-spin" /> : <ThumbsDown className="size-3.5" />}
+              Dismiss
+            </button>
+          </div>
+        </>
       ) : (
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2.5 flex gap-2">
           <button
             type="button"
             onClick={onVoteYes}

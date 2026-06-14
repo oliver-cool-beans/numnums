@@ -131,17 +131,7 @@ function resolveStepImageUrl(imageAssets: { url: string }[]): string | null {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function goBack(router: ReturnType<typeof useRouter>) {
-  if (typeof document !== "undefined" && document.referrer) {
-    try {
-      if (new URL(document.referrer).origin === globalThis.location.origin) {
-        router.back();
-        return;
-      }
-    } catch {
-      // malformed referrer — fall through
-    }
-  }
-  router.push("/dashboard");
+  router.back();
 }
 
 export default function RecipePage() {
@@ -520,7 +510,7 @@ export default function RecipePage() {
               </div>
               <button
                 type="button"
-                onClick={() => router.push("/dashboard")}
+                onClick={() => router.back()}
                 className="mt-3 w-full rounded-full bg-[#3A2A1F] py-4 font-semibold text-white transition-all active:scale-[0.97]"
               >
                 Back to dashboard

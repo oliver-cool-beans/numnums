@@ -33,7 +33,7 @@ export type SwapSuggestion = {
   id: string;
   day: Weekday;
   status: "pending" | "approved" | "dismissed";
-  currentRecipe: Pick<Recipe, "id" | "name"> | null;
+  currentRecipe: Pick<Recipe, "id" | "name" | "image_url"> | null;
   proposedRecipe: Pick<Recipe, "id" | "name" | "image_url">;
   suggestedByUserId: string;
   suggestedByName: string | null;
@@ -89,7 +89,7 @@ export async function fetchFamilySwapSuggestions(
     .from("recipe_swap_suggestions")
     .select(
       "id, day, status, suggested_by_user_id, yes_votes, no_votes, " +
-        "current_recipe:recipes!recipe_swap_suggestions_current_recipe_id_fkey(id, name), " +
+        "current_recipe:recipes!recipe_swap_suggestions_current_recipe_id_fkey(id, name, image_url), " +
         "proposed_recipe:recipes!recipe_swap_suggestions_proposed_recipe_id_fkey(id, name, image_url), " +
         "suggested_by:users!recipe_swap_suggestions_suggested_by_user_id_fkey(name)",
     )
@@ -108,7 +108,7 @@ export async function fetchFamilySwapSuggestions(
       suggested_by_user_id: string;
       yes_votes: number;
       no_votes: number;
-      current_recipe: { id: string; name: string } | null;
+      current_recipe: { id: string; name: string; image_url: string | null } | null;
       proposed_recipe: { id: string; name: string; image_url: string | null };
       suggested_by: { name: string | null } | null;
     };

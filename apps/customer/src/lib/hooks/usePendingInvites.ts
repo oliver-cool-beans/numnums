@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase-client";
 
 export type PendingInvite = {
@@ -9,15 +9,11 @@ export type PendingInvite = {
   expires_at: string;
 };
 
-/**
- * Invites the current user has sent that are still awaiting a response —
- * shown so they can see who they're waiting on and cancel if needed. Scoped
- * to `kind` (and `familyId` for family invites) so the friends and family
- * pages each see only their own.
- */
 export function usePendingInvites(userId: string | undefined, kind: "friend" | "family", familyId?: string) {
   const [invites, setInvites] = useState<PendingInvite[] | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  // Stable ref so revoke() and the focus handler can call load() without being
+  // inside the effect or causing a re-subscription.
+  const loadRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
     if (!userId) return;
@@ -38,35 +34,65 @@ export function usePendingInvites(userId: string | undefined, kind: "friend" | "
 
       if (error) {
         console.error("[pending-invites] Failed to load pending invites", error);
-        setInvites([]);
         return;
       }
 
       setInvites(data ?? []);
     };
 
-    load();
-  }, [userId, kind, familyId, refreshKey]);
+    loadRef.current = load;
+    void load();
 
-  const reload = useCallback(() => setRefreshKey((key) => key + 1), []);
+    // accept_invite (security definer) deletes the invite row and inserts into
+    // family_members/friendships atomically. DELETE events from security-definer
+    // functions can be dropped by Supabase Realtime's RLS evaluation, so we
+    // subscribe to both tables: whichever event arrives first triggers the reload.
+    const secondaryChange =
+      kind === "family" && familyId
+        ? { table: "family_members" as const, filter: `family_id=eq.${familyId}` }
+        : { table: "friendships" as const, filter: `requester_id=eq.${userId}` };
 
-  const revoke = useCallback(
-    async (inviteId: string) => {
-      const { error } = await supabase
-        .from("invites")
-        .delete()
-        .eq("id", inviteId);
+    const channel = supabase
+      .channel(`pending-invites:${userId}:${kind}:${familyId ?? ""}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "invites", filter: `inviter_id=eq.${userId}` },
+        () => { void load(); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", ...secondaryChange },
+        () => { void load(); },
+      )
+      .subscribe();
 
-      if (error) {
-        console.error("[pending-invites] Failed to revoke invite", error);
-        return false;
-      }
+    const onFocus = () => { void load(); };
+    window.addEventListener("focus", onFocus);
 
-      reload();
-      return true;
-    },
-    [reload],
-  );
+    return () => {
+      void supabase.removeChannel(channel);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [userId, kind, familyId]);
+
+  const reload = useCallback(() => { void loadRef.current(); }, []);
+
+  const revoke = useCallback(async (inviteId: string) => {
+    setInvites((prev) => prev?.filter((i) => i.id !== inviteId) ?? prev);
+
+    const { error } = await supabase
+      .from("invites")
+      .delete()
+      .eq("id", inviteId);
+
+    if (error) {
+      console.error("[pending-invites] Failed to revoke invite", error);
+      void loadRef.current();
+      return false;
+    }
+
+    return true;
+  }, []);
 
   return { invites, reload, revoke };
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, Check, ShoppingCart, Copy } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Check, ShoppingCart, Copy, CalendarDays } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useShoppingListFull, useFamilyContext, type EnrichedItem } from "@/lib/hooks";
 import { SubPageShell } from "@/components/dashboard";
@@ -342,7 +342,7 @@ function ShoppingListInner() {
           <header className="flex items-center gap-3 px-5 pb-3 pt-14">
             <button
               type="button"
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.back()}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm"
               aria-label="Go back"
             >
@@ -383,7 +383,7 @@ function ShoppingListInner() {
       <PageShell>
         <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-[400px] md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
           <header className="flex items-center gap-3 px-5 pb-4 pt-14">
-            <button type="button" onClick={() => router.push("/dashboard")} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm" aria-label="Go back">
+            <button type="button" onClick={() => router.back()} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm" aria-label="Go back">
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h1 className="text-2xl font-semibold text-[#3A2A1F]">Shopping list</h1>
@@ -401,7 +401,7 @@ function ShoppingListInner() {
       <PageShell>
         <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-[400px] md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
           <header className="flex items-center gap-3 px-5 pb-3 pt-14">
-            <button type="button" onClick={() => router.push("/dashboard")} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm" aria-label="Go back">
+            <button type="button" onClick={() => router.back()} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm" aria-label="Go back">
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h1 className="text-2xl font-semibold text-[#3A2A1F]">Shopping list</h1>
@@ -422,7 +422,7 @@ function ShoppingListInner() {
             <p className="text-center text-sm text-[#9E8B7E]">Plan this week&apos;s recipes first to generate a list.</p>
             <button
               type="button"
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.back()}
               className="mt-1 rounded-full bg-[#7CB342] px-5 py-2.5 text-sm font-semibold text-white"
             >
               Go to dashboard
@@ -443,7 +443,7 @@ function ShoppingListInner() {
       <PageShell>
         <main className="mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-white md:min-h-[400px] md:max-w-[600px] md:rounded-[28px] md:shadow-[0_4px_40px_rgba(58,42,31,0.10)] md:overflow-hidden">
           <header className="flex items-center gap-3 px-5 pb-3 pt-14">
-            <button type="button" onClick={() => router.push("/dashboard")} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm" aria-label="Go back">
+            <button type="button" onClick={() => router.back()} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm" aria-label="Go back">
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h1 className="text-2xl font-semibold text-[#3A2A1F]">Shopping list</h1>
@@ -466,7 +466,7 @@ function ShoppingListInner() {
             </div>
             <button
               type="button"
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.back()}
               className="mt-2 w-full rounded-[20px] bg-[#7CB342] py-4 text-base font-semibold text-white transition-all active:scale-[0.98]"
             >
               Back to dashboard
@@ -490,21 +490,31 @@ function ShoppingListInner() {
         <header className="flex items-center gap-3 px-5 pb-3 pt-14">
           <button
             type="button"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.back()}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm transition-colors hover:bg-[#F5EDE0]"
             aria-label="Go back"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="flex flex-1 min-w-0 items-center gap-1">
-            <h1 className="text-2xl font-semibold text-[#3A2A1F]">Shopping list</h1>
+          <div className="flex flex-1 min-w-0 flex-col">
+            <div className="flex items-center gap-1">
+              <h1 className="text-2xl font-semibold text-[#3A2A1F]">Shopping list</h1>
+              <button
+                type="button"
+                onClick={copyList}
+                aria-label="Copy shopping list"
+                className="flex items-center justify-center rounded-full p-2 text-[#A89080] transition-colors active:text-[#3A2A1F]"
+              >
+                {listCopied ? <Check className="h-[18px] w-[18px] text-[#7CB342]" strokeWidth={2.5} /> : <Copy className="h-[18px] w-[18px]" />}
+              </button>
+            </div>
             <button
               type="button"
-              onClick={copyList}
-              aria-label="Copy shopping list"
-              className="flex items-center justify-center rounded-full p-2 text-[#A89080] transition-colors active:text-[#3A2A1F]"
+              onClick={() => router.push(`/dashboard/week?week=${activeWeek}&year=${activeYear}`)}
+              className="flex items-center gap-1 text-xs font-medium text-[#7CB342] hover:text-[#558B2F] transition-colors"
             >
-              {listCopied ? <Check className="h-[18px] w-[18px] text-[#7CB342]" strokeWidth={2.5} /> : <Copy className="h-[18px] w-[18px]" />}
+              <CalendarDays className="h-3.5 w-3.5" />
+              {isCurrentWeek ? "This week" : getWeekLabel(activeWeek, activeYear)} · View meals
             </button>
           </div>
           <span className="shrink-0 text-sm text-[#9E8B7E]">{checkedItems} / {totalItems}</span>

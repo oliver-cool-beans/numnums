@@ -79,7 +79,7 @@ export default function FriendsPage() {
         <header className="flex items-center gap-3 px-5 pb-3 pt-14">
           <button
             type="button"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.back()}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#3A2A1F] shadow-sm transition-colors hover:bg-[#F5EDE0]"
             aria-label="Go back"
           >

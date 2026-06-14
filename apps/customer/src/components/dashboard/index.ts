@@ -15,4 +15,5 @@ export { EnableNotificationsPrompt } from "./EnableNotificationsPrompt";
 export { PendingInvitesList } from "./PendingInvitesList";
 export { InviteBlock } from "./InviteBlock";
 export { FamilyWeekPlan } from "./FamilyWeekPlan";
+export { SwapSuggestionsBlock } from "./SwapSuggestionsBlock";
 export { SubPageShell } from "./SubPageShell";
