@@ -178,6 +178,7 @@ const DIETARY_TAG_PATTERNS = [
 ];
 
 function shouldImportRecipe(recipe) {
+  if (!recipe.slug) return false;
   if (!recipe.headline) return false;
   if (!recipe.description) return false;
 
@@ -287,10 +288,10 @@ function buildChildRows(recipes, recipeIdMap, overrideLookup) {
   const stepRows = [];
 
   for (const recipe of recipes) {
-    const recipeId = recipeIdMap.get(String(recipe.id));
+    const recipeId = recipeIdMap.get(recipe.slug);
 
     if (!recipeId) {
-      throw new Error(`Missing recipe ID after upsert for external recipe ${recipe.id}`);
+      throw new Error(`Missing recipe ID after upsert for recipe slug ${recipe.slug}`);
     }
 
     for (const ingredient of recipe.ingredients ?? []) {
@@ -395,22 +396,22 @@ async function upsertAndSelectRows(supabase, table, rows, onConflict, selectColu
   return results;
 }
 
-async function loadExistingRecipes(supabase, externalIds) {
+async function loadExistingRecipes(supabase, slugs) {
   const existingRecipes = new Map();
 
-  for (const batch of chunk(externalIds)) {
+  for (const batch of chunk(slugs)) {
     const { data, error } = await supabase
       .from('recipes')
-      .select('id, external_id')
+      .select('id, slug')
       .eq('source', SOURCE)
-      .in('external_id', batch);
+      .in('slug', batch);
 
     if (error) {
       throw error;
     }
 
     for (const row of data ?? []) {
-      existingRecipes.set(row.external_id, row);
+      existingRecipes.set(row.slug, row);
     }
   }
 
@@ -439,14 +440,14 @@ async function importRecipeBatch(supabase, rawRecipes, overrideLookup, metadata 
   }
 
   const recipeRows = eligibleRecipes.map(mapRecipe);
-  const externalIds = recipeRows.map((row) => row.external_id);
+  const slugs = recipeRows.map((row) => row.slug);
 
   logImportStage(metadata, `upserting ${recipeRows.length} recipes`);
   const [existingRecipes, upsertedRecipes] = await Promise.all([
-    loadExistingRecipes(supabase, externalIds),
-    upsertAndSelectRows(supabase, 'recipes', recipeRows, 'source,external_id', 'id, external_id'),
+    loadExistingRecipes(supabase, slugs),
+    upsertAndSelectRows(supabase, 'recipes', recipeRows, 'source,slug', 'id, slug'),
   ]);
-  const recipeIdMap = new Map(upsertedRecipes.map((row) => [row.external_id, row.id]));
+  const recipeIdMap = new Map(upsertedRecipes.map((row) => [row.slug, row.id]));
 
   const { ingredientRows, stepRows } = buildChildRows(eligibleRecipes, recipeIdMap, overrideLookup);
 
@@ -477,7 +478,7 @@ async function importRecipeBatch(supabase, rawRecipes, overrideLookup, metadata 
     replaceRecipeChildren(supabase, 'recipe_steps', recipeIds, stepRows, 'recipe_id,step_number'),
   ]);
 
-  const insertedCount = recipeRows.filter((row) => !existingRecipes.has(row.external_id)).length;
+  const insertedCount = recipeRows.filter((row) => !existingRecipes.has(row.slug)).length;
   const updatedCount = recipeRows.length - insertedCount;
 
   logImportStage(metadata, `batch complete: ${insertedCount} inserted, ${updatedCount} updated`);
