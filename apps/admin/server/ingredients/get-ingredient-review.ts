@@ -281,11 +281,11 @@ export async function getIngredientReview(
     const [recipeCountResult, linkedProductCountResult, recipeIngredientsResult, linksResult, productSearchResult] = await Promise.all([
       supabase
         .from('recipe_ingredient_links')
-        .select('id', { count: 'exact', head: true })
+        .select('id', { count: 'estimated', head: true })
         .eq('ingredient_id', ingredient.id),
       supabase
         .from('ingredient_product_links')
-        .select('id', { count: 'exact', head: true })
+        .select('id', { count: 'estimated', head: true })
         .eq('ingredient_id', ingredient.id),
       shouldLoadRecipeMentions
         ? supabase

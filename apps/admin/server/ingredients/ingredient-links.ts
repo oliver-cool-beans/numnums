@@ -6,8 +6,7 @@ import type {
   IngredientRow,
   IngredientLinkSummary,
   IngredientProductLinkRow,
-  ProductRow,
-  RecipeIngredientLinkRow
+  ProductRow
 } from '@/server/db/types';
 import { mapProduct, PRODUCT_SUMMARY_SELECT } from '@/server/products/list-products';
 
@@ -40,9 +39,7 @@ type LinkUserRow = {
 
 type ProductAvailabilityRow = Pick<ProductRow, 'id' | 'available' | 'discontinued' | 'name'>;
 
-type IngredientLinkIngredientRow = Pick<IngredientRow, 'id' | 'source' | 'handle'> & {
-  recipe_ingredient_links: Array<Pick<RecipeIngredientLinkRow, 'recipe_id'>> | null;
-};
+type IngredientLinkIngredientRow = Pick<IngredientRow, 'id' | 'source' | 'handle'>;
 
 type IngredientLinkQueryRow = IngredientProductLinkRow & {
   ingredients: IngredientLinkIngredientRow | null;
@@ -89,11 +86,7 @@ function resolvePageNumber(value: number | null | undefined) {
   return Math.floor(value);
 }
 
-function getRecipeCount(ingredient: IngredientLinkIngredientRow) {
-  return new Set((ingredient.recipe_ingredient_links ?? []).map((row) => row.recipe_id)).size;
-}
-
-function mapIngredientLinkSummary(row: IngredientLinkQueryRow) {
+function mapIngredientLinkSummary(row: IngredientLinkQueryRow, recipeCounts: Map<string, number>) {
   const ingredient = row.ingredients;
   const productRow = row.products;
 
@@ -116,7 +109,7 @@ function mapIngredientLinkSummary(row: IngredientLinkQueryRow) {
     productAvailable: product.available,
     productLinkable: isProductLinkable(productRow),
     priority: row.priority,
-    recipeCount: getRecipeCount(ingredient),
+    recipeCount: recipeCounts.get(ingredient.id) ?? 0,
     notes: row.notes,
     createdByUserId: row.created_by_user_id,
     createdByName: row.users?.name ?? null,
@@ -186,7 +179,7 @@ export async function listIngredientLinks(filters: IngredientLinkFilters = {}): 
     const { data: linkRows, error: linkError } = await supabase
       .from('ingredient_product_links')
       .select(
-        `id, ingredient_id, product_id, priority, notes, created_by_user_id, created_at, updated_at, ingredients(id, source, handle, recipe_ingredient_links(recipe_id)), products(${PRODUCT_SUMMARY_SELECT}), users(id, name)`
+        `id, ingredient_id, product_id, priority, notes, created_by_user_id, created_at, updated_at, ingredients(id, source, handle), products(${PRODUCT_SUMMARY_SELECT}), users(id, name)`
       )
       .order('updated_at', { ascending: false })
       .range(from, to)
@@ -197,9 +190,24 @@ export async function listIngredientLinks(filters: IngredientLinkFilters = {}): 
     }
 
     const rawRows = linkRows ?? [];
+    const ingredientIds = rawRows
+      .map((r) => r.ingredients?.id)
+      .filter((id): id is string => Boolean(id));
+
+    const { data: countRows, error: countError } = await supabase
+      .rpc('ingredient_recipe_counts', { p_ingredient_ids: ingredientIds });
+
+    if (countError) {
+      throw countError;
+    }
+
+    const recipeCounts = new Map<string, number>(
+      (countRows ?? []).map((r: { ingredient_id: string; recipe_count: number }) => [r.ingredient_id, Number(r.recipe_count)])
+    );
+
     const items = rawRows
       .slice(0, pageSize)
-      .map(mapIngredientLinkSummary)
+      .map((row) => mapIngredientLinkSummary(row, recipeCounts))
       .filter((value): value is IngredientLinkSummary => value !== null);
 
     return {

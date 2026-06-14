@@ -28,7 +28,6 @@ export function usePendingInvites(userId: string | undefined, kind: "friend" | "
         .select("id, invitee_email, expires_at")
         .eq("inviter_id", userId)
         .eq("kind", kind)
-        .eq("status", "pending")
         .order("created_at", { ascending: false });
 
       if (kind === "family" && familyId) {
@@ -55,9 +54,8 @@ export function usePendingInvites(userId: string | undefined, kind: "friend" | "
     async (inviteId: string) => {
       const { error } = await supabase
         .from("invites")
-        .update({ status: "revoked" })
-        .eq("id", inviteId)
-        .eq("status", "pending");
+        .delete()
+        .eq("id", inviteId);
 
       if (error) {
         console.error("[pending-invites] Failed to revoke invite", error);

@@ -9,9 +9,7 @@ type UnmatchedIngredientRow = {
   source: string;
   handle: string;
   updated_at: string;
-  is_pantry: boolean;
-  recipe_ingredient_links: Array<{ id: string }> | null;
-  ingredient_product_links: Array<Record<string, never>> | null;
+  recipe_link_count: number;
 };
 
 type UnmatchedIngredientQueryOptions = {
@@ -47,7 +45,7 @@ function mapQueueGroup(row: UnmatchedIngredientRow): IngredientReviewGroupItem {
     handle: row.handle,
     rawName: row.handle,
     rawNames: [row.handle],
-    pendingCount: row.recipe_ingredient_links?.length ?? 0,
+    pendingCount: Number(row.recipe_link_count),
     updatedAt: row.updated_at
   };
 }
@@ -56,24 +54,17 @@ async function getRecentUnmatchedIngredientGroups(
   supabase: NonNullable<Awaited<ReturnType<typeof createServerSupabaseClient>>>,
   options: UnmatchedIngredientQueryOptions
 ) {
-  const from = (options.page - 1) * options.pageSize;
-  const to = from + options.pageSize;
   const { data, error } = await supabase
-    .from('ingredients')
-    .select('id, source, handle, updated_at, is_pantry, recipe_ingredient_links(id), ingredient_product_links()')
-    .eq('is_pantry', false)
-    .is('ingredient_product_links', null)
-    .order('updated_at', { ascending: false })
-    .range(from, to)
-    .returns<UnmatchedIngredientRow[]>();
+    .rpc('unmatched_ingredients', {
+      p_limit: options.pageSize + 1,
+      p_offset: (options.page - 1) * options.pageSize
+    });
 
   if (error) {
     throw error;
   }
 
-  const rows = Array.isArray(data) ? data : [];
-
-  return rows.map(mapQueueGroup);
+  return ((data ?? []) as UnmatchedIngredientRow[]).map(mapQueueGroup);
 }
 
 export async function listUnmatchedIngredients(
@@ -103,20 +94,13 @@ export async function getIngredientReviewQueueCount() {
     return 0;
   }
 
-  const { count, error } = await supabase
-    .from('ingredients')
-    .select('id, is_pantry, ingredient_product_links()', {
-      count: 'exact',
-      head: true
-    })
-    .eq('is_pantry', false)
-    .is('ingredient_product_links', null);
+  const { data, error } = await supabase.rpc('unmatched_ingredients_count');
 
   if (error) {
     throw error;
   }
 
-  return count ?? 0;
+  return Number(data ?? 0);
 }
 
 export async function getIngredientReviewQueueSnapshot(
@@ -148,7 +132,7 @@ export async function getIngredientReviewQueueSnapshot(
     });
     const visibleItems = groupedItems.slice(0, resolvedPageSize);
     const pendingRowCount = groupedItems.reduce<number>(
-      (total, item) => total + item.pendingCount,
+      (total, item: IngredientReviewGroupItem) => total + item.pendingCount,
       0
     );
 

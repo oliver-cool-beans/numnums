@@ -16,7 +16,8 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'NumNums Admin',
   description:
-    'Admin panel for importing catalogue data, reviewing ingredient matches, and operating the NumNums platform.'
+    'Admin panel for importing catalogue data, reviewing ingredient matches, and operating the NumNums platform.',
+  robots: { index: false, follow: false }
 };
 
 export default function RootLayout({

@@ -25,12 +25,12 @@ export function InviteAcceptCta({ token, inviteeEmail }: { token: string; invite
   return (
     <div className="flex flex-col gap-3">
       <MagicLinkForm
-        redirectPath={`/auth/complete?next=/invite/${token}/accept`}
+        destination={`/invite/${token}/accept`}
         lockedEmail={inviteeEmail ?? undefined}
         helperText={
           inviteeEmail
             ? "This invite was sent to your email — confirm it's you and we'll set up your account."
-            : "We'll email you a link to confirm and set up your account — no password needed."
+            : "We'll email you a code to confirm and set up your account — no password needed."
         }
       />
       <p className="text-center text-[13px] leading-[1.3] text-[#6F5B4B]">

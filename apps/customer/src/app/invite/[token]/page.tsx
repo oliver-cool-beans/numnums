@@ -6,7 +6,6 @@ type InvitePreview = {
   kind: "family" | "friend";
   inviter_name: string | null;
   family_name: string | null;
-  status: "pending" | "accepted" | "revoked";
   expires_at: string;
   invitee_email: string | null;
 };
@@ -61,15 +60,6 @@ export default async function InvitePage({
       <InviteMessage
         title="This invite link isn't valid"
         message="It may have expired or already been used. Ask whoever sent it to send a new one."
-      />
-    );
-  }
-
-  if (invite.status !== "pending") {
-    return (
-      <InviteMessage
-        title="This invite has already been used"
-        message="Ask whoever sent it to send you a new link if you still want to join."
       />
     );
   }
