@@ -17,6 +17,9 @@ CREATE POLICY users_update_own ON public.users
   USING (id = auth.uid())
   WITH CHECK (id = auth.uid());
 
+-- DROP first because PostgreSQL won't let CREATE OR REPLACE change a return type.
+DROP FUNCTION IF EXISTS public.accept_invite(uuid);
+
 -- Update accept_invite to:
 --   1. Populate invitee_email on the new family_members row.
 --   2. Return the invite kind so the frontend can route family acceptors to
@@ -67,3 +70,5 @@ BEGIN
   RETURN inv.kind;
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.accept_invite(uuid) TO authenticated;
