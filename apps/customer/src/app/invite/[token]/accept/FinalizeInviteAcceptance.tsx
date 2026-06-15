@@ -29,7 +29,7 @@ export function FinalizeInviteAcceptance({ inviteId }: { inviteId: string }) {
       if (cancelled) return;
       setState({ status: "joining" });
 
-      const { error } = await supabase.rpc("accept_invite", { invite_id: inviteId });
+      const { data: kind, error } = await supabase.rpc("accept_invite", { invite_id: inviteId });
 
       if (cancelled) return;
 
@@ -45,6 +45,15 @@ export function FinalizeInviteAcceptance({ inviteId }: { inviteId: string }) {
       await maybeQueueFriendInviteAcceptedPrompt(userId);
 
       setState({ status: "done" });
+
+      if (kind === "family") {
+        const { data: profile } = await supabase.from("users").select("name").eq("id", userId).single();
+        if (!profile?.name) {
+          router.replace("/setup/name?next=/dashboard");
+          return;
+        }
+      }
+
       router.replace("/dashboard");
     };
 

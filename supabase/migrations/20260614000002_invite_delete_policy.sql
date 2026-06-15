@@ -1,6 +1,10 @@
 -- Revoke now deletes the row; accept now deletes the row too.
 -- status column is unused, so drop it along with the old update policy.
 
+-- Remove rows already processed under the old status-based system so they
+-- don't linger as phantom pending invites after the status column is dropped.
+delete from public.invites where status in ('accepted', 'revoked');
+
 drop policy invites_revoke_own ON public.invites;
 
 create policy invites_delete_own ON public.invites

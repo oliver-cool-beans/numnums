@@ -13,7 +13,7 @@ import { SubPageShell } from "@/components/dashboard/SubPageShell";
 import { InviteBlock } from "@/components/dashboard/InviteBlock";
 import { usePendingInvites, type PendingInvite } from "@/lib/hooks/usePendingInvites";
 
-type Member = { user_id: string; role: "owner" | "member"; name: string | null };
+type Member = { user_id: string; role: "owner" | "member"; name: string | null; invitee_email: string | null };
 type Family = { id: string; name: string; members: Member[] };
 
 function useFamilies(userId: string | undefined) {
@@ -41,19 +41,17 @@ function useFamilies(userId: string | undefined) {
         supabase.from("families").select("id, name").in("id", familyIds),
         supabase
           .from("family_members")
-          .select("family_id, user_id, role, user:users(id, name)")
+          .select("family_id, user_id, role, invitee_email, user:users(id, name)")
           .in("family_id", familyIds),
       ]);
 
       if (familyError || memberError) {
-        console.error("[groups] Failed to load families/members", { familyError, memberError });
+        console.error("[groups] Failed to load families", familyError ?? memberError);
         setFamilies([]);
         return;
       }
 
-      console.debug("[groups] memberRows", memberRows);
-
-      type MemberRow = { family_id: string; user_id: string; role: "owner" | "member"; user: { id: string; name: string | null } | { id: string; name: string | null }[] | null };
+      type MemberRow = { family_id: string; user_id: string; role: "owner" | "member"; invitee_email: string | null; user: { id: string; name: string | null } | { id: string; name: string | null }[] | null };
 
       const single = (value: MemberRow["user"]) => (Array.isArray(value) ? (value[0] ?? null) : value);
 
@@ -62,7 +60,7 @@ function useFamilies(userId: string | undefined) {
         name: family.name,
         members: ((memberRows ?? []) as MemberRow[])
           .filter((row) => row.family_id === family.id)
-          .map((row) => ({ user_id: row.user_id, role: row.role, name: single(row.user)?.name ?? null })),
+          .map((row) => ({ user_id: row.user_id, role: row.role, name: single(row.user)?.name ?? null, invitee_email: row.invitee_email ?? null })),
       }));
 
       setFamilies(list);
@@ -240,7 +238,7 @@ function FamilyContent({
         <ul className="divide-y divide-[#F0E8DE]">
           {family!.members.map((member) => (
             <li key={member.user_id} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
-              <span className="text-sm text-[#3A2A1F]">{member.name || "Member"}</span>
+              <span className="text-sm text-[#3A2A1F]">{member.name || member.invitee_email || "Member"}</span>
               {member.role === "owner" && (
                 <span className="rounded-full bg-[#E7F6DF] px-2 py-0.5 text-[0.68rem] font-semibold text-[#558B2F]">
                   Planner
