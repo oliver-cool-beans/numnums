@@ -10,7 +10,8 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useDraggable,
   useDroppable,
   useSensor,
@@ -225,7 +226,7 @@ function DraggableDayCard({
         if (hasRecipe && !isDragging) onDayClick?.(day.recipeId!);
       }}
       className={[
-        "flex-shrink-0 w-[120px] h-[220px] rounded-[22px] overflow-hidden border-2 flex flex-col justify-between transition-all touch-none select-none cursor-grab active:cursor-grabbing",
+        "flex-shrink-0 w-[120px] h-[220px] rounded-[22px] overflow-hidden border-2 flex flex-col justify-between transition-all select-none cursor-grab active:cursor-grabbing",
         isDropTarget ? "!border-[#7CB342] bg-[#E7F6DF] scale-[1.04]" : cardBorderClass,
         isDragging ? "opacity-20" : "",
       ].join(" ")}
@@ -365,7 +366,8 @@ export function WeekPreviewCards({
   }, [localDays]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
 
   const handleDragStart = useCallback((event: DragStartEvent) => {

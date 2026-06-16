@@ -275,7 +275,7 @@ function ShoppingListInner() {
   const activeYear = paramYear ? Number(paramYear) : currentYear;
   const isCurrentWeek = activeWeek === currentWeek && activeYear === currentYear;
 
-  const weekFilter = isCurrentWeek ? undefined : { weekNumber: activeWeek, weekYear: activeYear };
+  const weekFilter = { weekNumber: activeWeek, weekYear: activeYear };
 
   // For family members, show the owner's shopping list (same as the owner's meal plan)
   const familyContext = useFamilyContext(user?.id);

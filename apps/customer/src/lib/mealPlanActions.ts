@@ -128,10 +128,10 @@ function packsNeeded(
   sellingSize: number | null,
   sellingUnit: string | null,
 ): number {
-  if (!sellingSize) return ingredientQty;
+  if (!sellingSize) return 1;
   const iNorm = normalizeToBase(ingredientQty, ingredientUnit);
   const pNorm = normalizeToBase(sellingSize, sellingUnit);
-  if (!iNorm || !pNorm || iNorm.base !== pNorm.base) return ingredientQty;
+  if (!iNorm || !pNorm || iNorm.base !== pNorm.base) return 1;
   return Math.ceil(iNorm.value / pNorm.value);
 }
 
