@@ -7,3 +7,4 @@ apps/*/.turbo/
 apps/*/.env
 
 packages/*/node_modules/
+files
