@@ -10,6 +10,7 @@ import {
   Clock,
   ChefHat,
   Copy,
+  Flame,
 } from "lucide-react";
 import { useTodayRecipe } from "@/lib/hooks";
 import { useAuth } from "@/lib/auth-context";
@@ -146,6 +147,7 @@ export default function RecipePage() {
   const [justCompleted, setJustCompleted] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
   const [ingredientsCopied, setIngredientsCopied] = useState(false);
+  const [cookingMode, setCookingMode] = useState(false);
 
   const copyIngredients = () => {
     const lines = [`${recipe?.name ?? "Recipe"} – ingredients:`];
@@ -168,9 +170,9 @@ export default function RecipePage() {
       return next;
     });
   };
-  // Keep screen awake while cooking; release immediately on navigation away
+  // Keep screen awake when cooking mode is on; release when toggled off or page left
   useEffect(() => {
-    if (!("wakeLock" in navigator)) return;
+    if (!cookingMode || !("wakeLock" in navigator)) return;
     let active = true;
     let sentinel: WakeLockSentinel | null = null;
 
@@ -198,7 +200,7 @@ export default function RecipePage() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       sentinel?.release();
     };
-  }, []);
+  }, [cookingMode]);
 
   const progressSentRef = useRef(false);
 
@@ -336,6 +338,18 @@ export default function RecipePage() {
             {recipe.headline && (
               <p className="mt-1 text-base text-[#6F5B4B]">{recipe.headline}</p>
             )}
+            <button
+              type="button"
+              onClick={() => setCookingMode((v) => !v)}
+              className={`mt-3 flex items-center gap-2 self-start rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                cookingMode
+                  ? "bg-[#7CB342] text-white"
+                  : "bg-[#EADFCE] text-[#3A2A1F]"
+              }`}
+            >
+              <Flame size={15} />
+              Cooking Mode
+            </button>
             <div className="mt-4 flex flex-wrap gap-2">
               <span className="flex items-center gap-2 rounded-full bg-[#EADFCE] px-4 py-2 text-sm font-medium text-[#3A2A1F]">
                 <Clock size={16} />
