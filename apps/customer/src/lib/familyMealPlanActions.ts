@@ -218,6 +218,15 @@ export async function dismissRecipeSwapSuggestion(suggestionId: string): Promise
   if (error) throw error;
 }
 
+export async function withdrawRecipeSwapSuggestion(suggestionId: string): Promise<void> {
+  const { error } = await supabase
+    .from("recipe_swap_suggestions")
+    .delete()
+    .eq("id", suggestionId);
+
+  if (error) throw error;
+}
+
 // Owner-only direct swap: replaces a single day's recipe on the owner's plan
 // with no suggestion/approval step, then re-persists the week so the shopping
 // list stays in sync (same regeneration path a full re-plan uses).

@@ -20,11 +20,14 @@ import { useAuth } from "@/lib/auth-context";
 import { SubPageShell } from "@/components/dashboard/SubPageShell";
 import { useUserMealPlan, useRecipeSwap, useFamilyContext } from "@/lib/hooks";
 import { RecipeSwapPicker, FamilyWeekPlan } from "@/components/dashboard";
+import { FriendsWeekPanel } from "@/components/dashboard/FriendsWeekPanel";
+import { AddToWeekSheet } from "@/components/dashboard/AddToWeekSheet";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCurrentWeek, getWeekLabel } from "@/lib/utils";
+import { getCurrentWeek, getWeekAtOffset, getWeekLabel } from "@/lib/utils";
 import { formatDifficulty } from "@/lib/recipeSchedule";
 import { generateWeekPlan, swapWeekDays } from "@/lib/mealPlanActions";
+import { supabase } from "@/lib/supabase-client";
 import type { MealPlanDay } from "@/lib/hooks/useUserMealPlan";
 import type { Weekday } from "@/lib/recipeSchedule";
 
@@ -43,7 +46,7 @@ function DayRowOverlay({ entry }: { entry: MealPlanDay }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-[#9E8B7E]">{dayLabel}</p>
-          <p className="truncate text-sm font-medium text-[#3A2A1F]">{recipe?.name ?? "Nothing planned"}</p>
+          <p className="truncate text-sm font-medium text-[#3A2A1F]">{recipe?.name ?? "—"}</p>
           {recipe && (
             <p className="mt-0.5 text-xs text-[#6F5B4B]">
               {recipe.total_minutes ?? 25} mins · {formatDifficulty(recipe.difficulty)}
@@ -107,7 +110,7 @@ function DraggableDayRow({
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-[#9E8B7E]">{dayLabel}</p>
           <p className="truncate text-sm font-medium text-[#3A2A1F]">
-            {recipe?.name ?? "Nothing planned"}
+            {recipe?.name ?? "—"}
           </p>
           {recipe && (
             <p className="mt-0.5 text-xs text-[#6F5B4B]">
@@ -155,6 +158,8 @@ function WeekViewInner() {
   const recipeSwap = useRecipeSwap(user?.id, refetch);
   const [regenerating, setRegenerating] = useState(false);
   const [showRegenConfirm, setShowRegenConfirm] = useState(false);
+  const [activeWeekTab, setActiveWeekTab] = useState<"mine" | "friends">("mine");
+  const [addToWeekTarget, setAddToWeekTarget] = useState<{ recipeId: string; recipeName: string } | null>(null);
 
   // Local copy of days for optimistic DnD updates
   const [localDays, setLocalDays] = useState<MealPlanDay[]>([]);
@@ -214,6 +219,20 @@ function WeekViewInner() {
     }
   };
 
+  const handleCopyWeek = async (days: { day: Weekday; recipeId: string | null }[]) => {
+    if (!user) return;
+    const nextWeek = getWeekAtOffset(1);
+    const updates: Record<string, string | null> = {};
+    for (const d of days) updates[`${d.day}_recipe_id`] = d.recipeId;
+    const { error } = await supabase
+      .from("user_meal_plans")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .upsert({ user_id: user.id, week_number: nextWeek.week, year: nextWeek.year, ...updates } as any, { onConflict: "user_id,week_number,year" });
+    if (error) { toast.error("Couldn't copy week. Try again."); return; }
+    toast.success("Week copied to next week!");
+    refetch();
+  };
+
   if (userLoading) {
     return <LoadingScreen title="Your week" message="Just a moment..." />;
   }
@@ -252,6 +271,26 @@ function WeekViewInner() {
           )}
         </header>
 
+        {/* Tab bar — only shown when not in a family context */}
+        {!familyContext && (
+          <div className="flex gap-1 border-b border-[#F0E8DE] px-5">
+            {(["mine", "friends"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveWeekTab(tab)}
+                className={`pb-2.5 pt-1 text-sm font-semibold capitalize transition-colors border-b-2 mr-3 ${
+                  activeWeekTab === tab
+                    ? "border-[#7CB342] text-[#3A2A1F]"
+                    : "border-transparent text-[#9E8B7E] hover:text-[#6F5B4B]"
+                }`}
+              >
+                {tab === "mine" ? "My week" : "Friends"}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto px-5 pb-10">
           {familyContext ? (
             <FamilyWeekPlan
@@ -262,6 +301,12 @@ function WeekViewInner() {
               isOwner={familyContext.isOwner}
               week={week}
               year={year}
+            />
+          ) : activeWeekTab === "friends" ? (
+            <FriendsWeekPanel
+              currentUserId={user.id}
+              onAddDay={(recipeId, recipeName) => setAddToWeekTarget({ recipeId, recipeName })}
+              onCopyWeek={(days) => void handleCopyWeek(days)}
             />
           ) : (
             <>
@@ -354,6 +399,25 @@ function WeekViewInner() {
             </div>
           </div>
         </div>
+      )}
+
+      {addToWeekTarget && (
+        <AddToWeekSheet
+          recipeName={addToWeekTarget.recipeName}
+          onAdd={(day, targetWeek, targetYear) => {
+            const col = `${day}_recipe_id`;
+            void supabase
+              .from("user_meal_plans")
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .upsert({ user_id: user.id, week_number: targetWeek, year: targetYear, [col]: addToWeekTarget.recipeId } as any, { onConflict: "user_id,week_number,year" })
+              .then(({ error }) => {
+                if (error) toast.error("Couldn't add recipe. Try again.");
+                else { toast.success("Added to your week!"); refetch(); }
+              });
+            setAddToWeekTarget(null);
+          }}
+          onClose={() => setAddToWeekTarget(null)}
+        />
       )}
     </SubPageShell>
   );

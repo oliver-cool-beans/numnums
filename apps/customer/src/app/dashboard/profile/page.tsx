@@ -17,6 +17,7 @@ import {
   type NotificationPreferences,
 } from "@/lib/notificationPreferences";
 import { getPushPermissionState, isInstalledOnIOS, subscribeToPush, unsubscribeFromPush } from "@/lib/pushNotifications";
+import { supabase } from "@/lib/supabase-client";
 
 function optionLabel(id: string) {
   return DIETARY_OPTIONS.find((option) => option.id === id)?.label ?? id;
@@ -130,6 +131,7 @@ export default function ProfilePage() {
 
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences | null>(null);
   const [updatingChannel, setUpdatingChannel] = useState<"push" | "email" | null>(null);
+  const [activityPrivacy, setActivityPrivacy] = useState<"public" | "friends_only">("public");
 
   useEffect(() => {
     if (!user?.id) return;
@@ -159,6 +161,25 @@ export default function ProfilePage() {
       });
     return () => { isMounted = false; };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let isMounted = true;
+    supabase.from("users").select("activity_privacy").eq("id", user.id).single()
+      .then(({ data }) => { if (isMounted && data) setActivityPrivacy(data.activity_privacy as "public" | "friends_only"); });
+    return () => { isMounted = false; };
+  }, [user?.id]);
+
+  const handleToggleActivityPrivacy = async (isPublic: boolean) => {
+    if (!user?.id) return;
+    const next = isPublic ? "public" : "friends_only";
+    setActivityPrivacy(next);
+    const { error } = await supabase.from("users").update({ activity_privacy: next }).eq("id", user.id);
+    if (error) {
+      setActivityPrivacy(isPublic ? "friends_only" : "public");
+      toast.error("Couldn't update your activity setting.");
+    }
+  };
 
   const handleTogglePush = async (next: boolean) => {
     if (!user?.id || updatingChannel) return;
@@ -299,6 +320,26 @@ export default function ProfilePage() {
               checked={notificationPreferences?.emailEnabled ?? false}
               onCheckedChange={(checked) => void handleToggleEmail(checked)}
               disabled={!notificationPreferences || updatingChannel !== null}
+            />
+          </div>
+        </div>
+
+        <h2 className="mt-8 text-base font-semibold text-[#3A2A1F]">Activity &amp; privacy</h2>
+        <p className="mt-1 text-sm leading-5 text-[#6F5B4B]">
+          Control who can see your cooking activity in the social feed.
+        </p>
+        <div className="mt-4 divide-y divide-[#E8DCCB] rounded-[24px] border border-[#E8DCCB] bg-white px-4">
+          <div className="flex items-center justify-between gap-4 py-4">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[#3A2A1F]">Share activity publicly</p>
+              <p className="mt-0.5 text-xs leading-4 text-[#6F5B4B]">
+                Let anyone on NumNums see what you&apos;ve been cooking. Turn off to limit to friends only.
+              </p>
+            </div>
+            <Switch
+              checked={activityPrivacy === "public"}
+              onCheckedChange={(checked) => void handleToggleActivityPrivacy(checked)}
+              disabled={false}
             />
           </div>
         </div>

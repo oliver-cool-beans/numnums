@@ -40,6 +40,10 @@ import {
 } from "@/lib/notificationPrompts";
 import { swapWeekDays } from "@/lib/mealPlanActions";
 import { toast } from "@/lib/toast";
+import { supabase } from "@/lib/supabase-client";
+import { useActivityFeed } from "@/lib/hooks/useActivityFeed";
+import { ActivityFeedBlock } from "@/components/dashboard/ActivityFeedBlock";
+import { AddToWeekSheet } from "@/components/dashboard/AddToWeekSheet";
 
 type DayMenuTarget = { day: Weekday; recipeId: string; recipeName: string | null };
 
@@ -194,6 +198,11 @@ function DashboardInner() {
   const { week: weekPreview, loading: weekLoading, refetch: refetchWeekPreview } = useWeekPreview(mealPlanUserId);
   const { list: shoppingList, loading: listLoading } = useShoppingList(user?.id);
   const { friendsToday, loading: friendsTodayLoading } = useFriendsToday(user?.id);
+  const { items: activityItems, loading: activityLoading, toggleLike } = useActivityFeed(user?.id);
+  const [addToWeekTarget, setAddToWeekTarget] = useState<{ recipeId: string; recipeName: string } | null>(null);
+
+  const friendIdSet = new Set((friendsToday ?? []).map((ft) => ft.friend.id));
+  const isFriend = (uid: string) => friendIdSet.has(uid);
 
   const recipeSwap = useRecipeSwap(user?.id, () => {
     refetchMealPlan();
@@ -233,6 +242,27 @@ function DashboardInner() {
   const handleViewFullWeek = () => {
     const { week, year } = getCurrentWeek();
     router.push(`/dashboard/week?week=${week}&year=${year}`);
+  };
+
+  const handleAddToWeek = async (day: Weekday, week: number, year: number) => {
+    if (!user || !addToWeekTarget) return;
+    const { recipeId } = addToWeekTarget;
+    try {
+      const col = `${day}_recipe_id` as string;
+      const { error } = await supabase
+        .from("user_meal_plans")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .update({ [col]: recipeId } as any)
+        .eq("user_id", user.id)
+        .eq("week_number", week)
+        .eq("year", year);
+      if (error) throw error;
+      toast.success("Added to your week!");
+      refetchMealPlan();
+      refetchWeekPreview();
+    } catch {
+      toast.error("Couldn't add recipe. Try again.");
+    }
   };
 
   const handleLongPressDay = (day: Weekday, recipeId: string) => {
@@ -374,7 +404,7 @@ function DashboardInner() {
                 hasMealPlan={Boolean(mealPlan)}
                 onBuildWeek={() => router.replace("/dashboard")}
                 onPlanAhead={() => router.push("/dashboard/plan-ahead")}
-                onStartCooking={() => todayRecipeId && router.push(`/dashboard/recipes/${todayRecipeId}`)}
+                onStartCooking={() => { if (!todayRecipeId) return; const dayNames = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const; const { week, year } = getCurrentWeek(); router.push(`/dashboard/recipes/${todayRecipeId}?week=${week}&year=${year}&day=${dayNames[getDayOfWeek()]}`); }}
                 isLoading={currentRecipeLoading}
                 loadingKind={currentRecipeLoadingKind}
               />
@@ -382,7 +412,7 @@ function DashboardInner() {
               {weekPreview.length > 0 && (
                 <WeekPreviewCards
                   days={weekPreview}
-                  onDayClick={(recipeId) => router.push(`/dashboard/recipes/${recipeId}`)}
+                  onDayClick={(recipeId, day) => { const { week, year } = getCurrentWeek(); router.push(`/dashboard/recipes/${recipeId}?week=${week}&year=${year}&day=${day}`); }}
                   onLongPressDay={isFamilyMember ? handleLongPressDay : undefined}
                   onSwapDays={isFamilyMember ? undefined : handleSwapDays}
                   onViewFullWeek={handleViewFullWeek}
@@ -403,6 +433,15 @@ function DashboardInner() {
               <PlanAheadCard
                 onOpenModal={() => router.push("/dashboard/plan-ahead")}
                 onShopNextWeek={handleShopNextWeek}
+              />
+              <ActivityFeedBlock
+                items={activityItems}
+                currentUserId={user?.id}
+                isFriend={isFriend}
+                onRecipeClick={(id) => router.push(`/dashboard/recipes/${id}`)}
+                onAddToWeek={(recipeId, recipeName) => setAddToWeekTarget({ recipeId, recipeName })}
+                onToggleLike={toggleLike}
+                isLoading={activityLoading}
               />
               <FriendsTodayBlock
                 friendsToday={friendsToday || []}
@@ -476,7 +515,7 @@ function DashboardInner() {
               hasMealPlan={Boolean(mealPlan)}
               onBuildWeek={() => router.replace("/dashboard")}
               onPlanAhead={() => router.push("/dashboard/plan-ahead")}
-              onStartCooking={() => todayRecipeId && router.push(`/dashboard/recipes/${todayRecipeId}`)}
+              onStartCooking={() => { if (!todayRecipeId) return; const dayNames = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const; const { week, year } = getCurrentWeek(); router.push(`/dashboard/recipes/${todayRecipeId}?week=${week}&year=${year}&day=${dayNames[getDayOfWeek()]}`); }}
               isLoading={currentRecipeLoading}
               loadingKind={currentRecipeLoadingKind}
             />
@@ -494,7 +533,7 @@ function DashboardInner() {
                   className="space-y-4"
                   flat
                   days={weekPreview}
-                  onDayClick={(recipeId) => router.push(`/dashboard/recipes/${recipeId}`)}
+                  onDayClick={(recipeId, day) => { const { week, year } = getCurrentWeek(); router.push(`/dashboard/recipes/${recipeId}?week=${week}&year=${year}&day=${day}`); }}
                   onLongPressDay={isFamilyMember ? handleLongPressDay : undefined}
                   onSwapDays={isFamilyMember ? undefined : handleSwapDays}
                   onViewFullWeek={handleViewFullWeek}
@@ -521,6 +560,20 @@ function DashboardInner() {
               onOpenModal={() => router.push("/dashboard/plan-ahead")}
               onShopNextWeek={handleShopNextWeek}
             />
+
+            <div className="rounded-[24px] bg-white p-5 shadow-[0_2px_12px_rgba(58,42,31,0.06)]">
+              <ActivityFeedBlock
+                className="space-y-4"
+                flat
+                items={activityItems}
+                currentUserId={user?.id}
+                isFriend={isFriend}
+                onRecipeClick={(id) => router.push(`/dashboard/recipes/${id}`)}
+                onAddToWeek={(recipeId, recipeName) => setAddToWeekTarget({ recipeId, recipeName })}
+                onToggleLike={toggleLike}
+                isLoading={activityLoading}
+              />
+            </div>
 
             <div className="rounded-[24px] bg-white p-5 shadow-[0_2px_12px_rgba(58,42,31,0.06)]">
               <FriendsTodayBlock
@@ -566,6 +619,14 @@ function DashboardInner() {
           recentRecipeIds={recipeSwap.recentRecipeIds}
           onCancel={recipeSwap.close}
           onSelect={(recipe) => void recipeSwap.handleSelect(recipe)}
+        />
+      )}
+
+      {addToWeekTarget && (
+        <AddToWeekSheet
+          recipeName={addToWeekTarget.recipeName}
+          onAdd={(day, week, year) => void handleAddToWeek(day, week, year)}
+          onClose={() => setAddToWeekTarget(null)}
         />
       )}
     </div>

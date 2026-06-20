@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Clock } from "lucide-react";
 import { FriendToday } from "@/lib/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
+import { avatarColor } from "@/lib/avatarColor";
 import { MealHeroCard } from "./MealHeroCard";
 
 type FriendsTodayBlockProps = {
@@ -15,13 +16,6 @@ type FriendsTodayBlockProps = {
   flat?: boolean;
 };
 
-const AVATAR_COLORS = ["#7CB342", "#F4B942", "#E85D5D", "#5B9BD5", "#9B6CD9", "#EC8B5E"];
-
-function avatarColor(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = Math.trunc(hash * 31 + (id.codePointAt(i) ?? 0));
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
 
 // A little flavour so the block reads as "what your friends are up to"
 // rather than a flat list of recipe names.

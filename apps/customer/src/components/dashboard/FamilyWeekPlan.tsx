@@ -372,7 +372,7 @@ export function FamilyWeekPlan({ familyId, ownerId, ownerName, currentUserId, is
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-[#9E8B7E]">{dayLabel}</p>
                   <p className="truncate text-sm font-medium text-[#3A2A1F]">
-                    {entry.recipe?.name ?? "Nothing planned"}
+                    {entry.recipe?.name ?? "—"}
                   </p>
                 </div>
               </div>

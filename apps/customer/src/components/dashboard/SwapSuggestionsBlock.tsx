@@ -11,10 +11,11 @@ import {
   fetchFamilySwapSuggestions,
   approveRecipeSwapSuggestion,
   dismissRecipeSwapSuggestion,
+  withdrawRecipeSwapSuggestion,
   voteOnRecipeSwapSuggestion,
 } from "@/lib/familyMealPlanActions";
 
-type PendingAction = { id: string; action: "approve" | "dismiss" | "vote-yes" | "vote-no" };
+type PendingAction = { id: string; action: "approve" | "dismiss" | "withdraw" | "vote-yes" | "vote-no" };
 
 function firstName(name: string | null | undefined): string {
   return name?.split(" ")[0] ?? "Someone";
@@ -110,7 +111,19 @@ export function SwapSuggestionsBlock({
       await dismissRecipeSwapSuggestion(suggestion.id);
       await load();
     } catch {
-      toast.error("Couldn't dismiss that suggestion.");
+      toast.error("Couldn't reject that suggestion.");
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleWithdraw = async (suggestion: SwapSuggestion) => {
+    setPendingAction({ id: suggestion.id, action: "withdraw" });
+    try {
+      await withdrawRecipeSwapSuggestion(suggestion.id);
+      await load();
+    } catch {
+      toast.error("Couldn't withdraw your suggestion.");
     } finally {
       setPendingAction(null);
     }
@@ -124,16 +137,7 @@ export function SwapSuggestionsBlock({
     );
   }
 
-  // Only surface suggestions where the current user has something to do:
-  // - Suggester can't vote or approve their own suggestion → skip
-  // - Owner only sees when votes exist: 0 votes means still gathering input,
-  //   votes present means it's ready to commit
-  // - Other members can always vote on suggestions from others
-  const actionable = suggestions.filter((s) => {
-    if (s.suggestedByUserId === currentUserId) return false;
-    if (isOwner) return s.yesVotes + s.noVotes > 0;
-    return true;
-  });
+  const actionable = suggestions;
 
   if (actionable.length === 0) return null;
 
@@ -172,9 +176,16 @@ export function SwapSuggestionsBlock({
               </div>
 
               {isOwnSuggestion ? (
-                <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-[#B08D52]">
-                  Pending
-                </span>
+                <button
+                  type="button"
+                  onClick={() => void handleWithdraw(suggestion)}
+                  disabled={isActive}
+                  className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-[#B08D52] disabled:opacity-50"
+                >
+                  {isActive && action === "withdraw"
+                    ? <Loader2 className="size-3 animate-spin" />
+                    : "Withdraw"}
+                </button>
               ) : isOwner ? (
                 <div className="flex shrink-0 gap-1.5">
                   <button
@@ -197,7 +208,7 @@ export function SwapSuggestionsBlock({
                     {isActive && action === "dismiss"
                       ? <Loader2 className="size-3 animate-spin" />
                       : <ThumbsDown className="size-3" />}
-                    Dismiss
+                    Reject
                   </button>
                 </div>
               ) : (

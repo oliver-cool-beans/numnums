@@ -15,10 +15,12 @@ type MealHeroCardProps = {
   title: string;
   eyebrow: string;
   eyebrowClassName?: string;
+  titleClassName?: string;
   meta?: ReactNode;
   avatar?: MealHeroCardAvatar;
   footer?: ReactNode;
   imageHeightClassName?: string;
+  contentClassName?: string;
   className?: string;
   priority?: boolean;
   onClick?: () => void;
@@ -39,13 +41,15 @@ export function MealHeroCard({
   avatar,
   footer,
   imageHeightClassName = "h-52 md:h-64",
+  contentClassName = "p-5",
+  titleClassName = "mt-1.5 text-2xl font-semibold leading-tight text-[#3A2A1F]",
   className = "overflow-hidden rounded-[28px] bg-[#E7F6DF]",
   priority,
   onClick,
 }: MealHeroCardProps) {
   const content = (
     <>
-      <div className={`relative w-full bg-[#D9CCBB] ${imageHeightClassName}`}>
+      <div className={`relative w-full shrink-0 bg-[#D9CCBB] ${imageHeightClassName}`}>
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -72,9 +76,9 @@ export function MealHeroCard({
         )}
       </div>
 
-      <div className="p-5">
+      <div className={contentClassName}>
         <p className={`text-xs font-semibold uppercase tracking-wider ${eyebrowClassName}`}>{eyebrow}</p>
-        <h2 className="mt-1.5 text-2xl font-semibold leading-tight text-[#3A2A1F]">{title}</h2>
+        <h2 className={titleClassName}>{title}</h2>
         {meta}
         {footer}
       </div>

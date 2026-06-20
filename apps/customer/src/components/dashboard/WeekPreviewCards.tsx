@@ -24,7 +24,7 @@ const LONG_PRESS_MOVE_TOLERANCE = 12;
 
 type WeekPreviewCardsProps = {
   days: WeekPreviewDay[];
-  onDayClick?: (recipeId: string) => void;
+  onDayClick?: (recipeId: string, day: Weekday) => void;
   onLongPressDay?: (day: Weekday, recipeId: string) => void;
   onSwapDays?: (dayA: Weekday, dayB: Weekday) => void;
   onViewFullWeek?: () => void;
@@ -103,7 +103,7 @@ function DayCard({
   day: WeekPreviewDay;
   isLoading?: boolean;
   cardRef?: (el: HTMLButtonElement | null) => void;
-  onDayClick?: (recipeId: string) => void;
+  onDayClick?: (recipeId: string, day: Weekday) => void;
   onLongPressDay?: (day: Weekday, recipeId: string) => void;
 }) {
   const hasRecipe = Boolean(day.recipeId);
@@ -124,7 +124,7 @@ function DayCard({
   return (
     <button
       ref={cardRef}
-      onClick={() => day.recipeId && onDayClick?.(day.recipeId)}
+      onClick={() => day.recipeId && onDayClick?.(day.recipeId, day.day)}
       className={`flex-shrink-0 w-[120px] h-[220px] rounded-[22px] overflow-hidden border-2 flex flex-col justify-between transition-all ${cardBorderClass}`}
       type="button"
       disabled={isLoading || !hasRecipe}
@@ -188,7 +188,7 @@ function DraggableDayCard({
   day: WeekPreviewDay;
   isLoading?: boolean;
   cardRef?: (el: HTMLButtonElement | null) => void;
-  onDayClick?: (recipeId: string) => void;
+  onDayClick?: (recipeId: string, day: Weekday) => void;
   activeDragDay: string | null;
 }) {
   const hasRecipe = Boolean(day.recipeId);
@@ -223,7 +223,7 @@ function DraggableDayCard({
       {...attributes}
       {...listeners}
       onClick={() => {
-        if (hasRecipe && !isDragging) onDayClick?.(day.recipeId!);
+        if (hasRecipe && !isDragging) onDayClick?.(day.recipeId!, day.day);
       }}
       className={[
         "flex-shrink-0 w-[120px] h-[220px] rounded-[22px] overflow-hidden border-2 flex flex-col justify-between transition-all select-none cursor-grab active:cursor-grabbing",

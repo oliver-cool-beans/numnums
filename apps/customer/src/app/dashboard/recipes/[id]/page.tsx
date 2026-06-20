@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useTodayRecipe } from "@/lib/hooks";
 import { useAuth } from "@/lib/auth-context";
+import { useFamilyContext } from "@/lib/hooks/useFamilyContext";
 import { supabase } from "@/lib/supabase-client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubPageShell } from "@/components/dashboard/SubPageShell";
@@ -135,19 +136,43 @@ function goBack(router: ReturnType<typeof useRouter>) {
   router.back();
 }
 
-export default function RecipePage() {
+function RecipePageInner() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
 
   const recipeId = params.id as string;
+
+  // Slot context — present when navigating from a specific meal plan day
+  const slotWeek = searchParams.get("week") ? Number(searchParams.get("week")) : null;
+  const slotYear = searchParams.get("year") ? Number(searchParams.get("year")) : null;
+  const slotDay = searchParams.get("day");
+
   const { recipe, loading } = useTodayRecipe(user?.id, recipeId);
+  const familyContext = useFamilyContext(user?.id);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [justCompleted, setJustCompleted] = useState(false);
+  const [slotCompleted, setSlotCompleted] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<string>>(new Set());
   const [ingredientsCopied, setIngredientsCopied] = useState(false);
   const [cookingMode, setCookingMode] = useState(false);
+
+  // Check whether this specific slot has been marked complete
+  useEffect(() => {
+    if (!user?.id || !slotWeek || !slotYear || !slotDay) return;
+    supabase
+      .from("user_meal_plans")
+      .select("completed_days")
+      .eq("user_id", user.id)
+      .eq("week_number", slotWeek)
+      .eq("year", slotYear)
+      .maybeSingle()
+      .then(({ data }) => {
+        setSlotCompleted(((data?.completed_days ?? []) as string[]).includes(slotDay));
+      });
+  }, [user?.id, slotWeek, slotYear, slotDay]);
 
   const copyIngredients = () => {
     const lines = [`${recipe?.name ?? "Recipe"} – ingredients:`];
@@ -236,6 +261,34 @@ export default function RecipePage() {
       },
       { onConflict: "user_id,recipe_id" },
     );
+
+    // Mark the specific meal plan slot as complete so duplicate recipes track independently
+    if (slotWeek && slotYear && slotDay) {
+      const { data: plan } = await supabase
+        .from("user_meal_plans")
+        .select("completed_days")
+        .eq("user_id", user.id)
+        .eq("week_number", slotWeek)
+        .eq("year", slotYear)
+        .maybeSingle();
+      const existing: string[] = plan?.completed_days ?? [];
+      if (!existing.includes(slotDay)) {
+        await supabase
+          .from("user_meal_plans")
+          .update({ completed_days: [...existing, slotDay] })
+          .eq("user_id", user.id)
+          .eq("week_number", slotWeek)
+          .eq("year", slotYear);
+      }
+    }
+
+    const displayName = user.name?.split(" ")[0] ?? null;
+    supabase.from("activity").insert({ user_id: user.id, type: "cooked", actor_display_name: displayName, payload: { recipe_id: recipeId } })
+      .then(({ error }) => { if (error) console.error("[activity] cooked insert failed", error); });
+    if (familyContext?.isOwner) {
+      supabase.from("activity").insert({ user_id: user.id, type: "family_cooked", actor_display_name: displayName, payload: { recipe_id: recipeId, family_id: familyContext.familyId } })
+        .then(({ error }) => { if (error) console.error("[activity] family_cooked insert failed", error); });
+    }
   };
 
   const scrollToTop = () => {
@@ -290,7 +343,10 @@ export default function RecipePage() {
     );
   }
 
-  const isCompleted = recipe.progress.status === "completed" || justCompleted;
+  // When slot context is present, completion is per-slot; otherwise fall back to per-recipe progress
+  const isCompleted = slotDay
+    ? slotCompleted || justCompleted
+    : recipe.progress.status === "completed" || justCompleted;
 
   return (
     <SubPageShell>
@@ -551,5 +607,13 @@ export default function RecipePage() {
       </div>
       </main>
     </SubPageShell>
+  );
+}
+
+export default function RecipePage() {
+  return (
+    <Suspense>
+      <RecipePageInner />
+    </Suspense>
   );
 }

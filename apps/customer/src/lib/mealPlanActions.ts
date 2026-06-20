@@ -48,6 +48,9 @@ export async function generateWeekPlan(
     .eq("year", year)
     .eq("status", "pending");
 
+  const { data: profile } = await supabase.from("users").select("name").eq("id", userId).single();
+  void supabase.from("activity").insert({ user_id: userId, type: "planned", actor_display_name: profile?.name?.split(" ")[0] ?? null, payload: { week_number: week, year } });
+
   return meals;
 }
 
