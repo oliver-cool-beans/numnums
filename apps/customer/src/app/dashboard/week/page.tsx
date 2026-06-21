@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Loader2, Shuffle, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Shuffle, Sparkles } from "lucide-react";
 import {
   DndContext,
   DragEndEvent,
@@ -24,7 +24,7 @@ import { FriendsWeekPanel } from "@/components/dashboard/FriendsWeekPanel";
 import { AddToWeekSheet } from "@/components/dashboard/AddToWeekSheet";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCurrentWeek, getWeekAtOffset, getWeekLabel } from "@/lib/utils";
+import { getCurrentWeek, getWeekAtOffset, getWeekLabel, getRelativeWeekLabel } from "@/lib/utils";
 import { formatDifficulty } from "@/lib/recipeSchedule";
 import { generateWeekPlan, swapWeekDays } from "@/lib/mealPlanActions";
 import { supabase } from "@/lib/supabase-client";
@@ -151,6 +151,14 @@ function WeekViewInner() {
   const year = Number(searchParams.get("year")) || current.year;
   const weekLabel = getWeekLabel(week, year);
   const isCurrentWeek = week === current.week && year === current.year;
+  const relativeLabel = getRelativeWeekLabel(week, year);
+  const weekTitle = isCurrentWeek ? "This week" : (relativeLabel !== weekLabel ? relativeLabel : "Your week");
+
+  const navigate = (offset: number) => {
+    const totalOffset = (year - current.year) * 52 + (week - current.week) + offset;
+    const { week: nextWeek, year: nextYear } = getWeekAtOffset(totalOffset);
+    router.push(`/dashboard/week?week=${nextWeek}&year=${nextYear}`);
+  };
 
   const familyContext = useFamilyContext(user?.id);
 
@@ -254,8 +262,26 @@ function WeekViewInner() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-semibold text-[#3A2A1F]">{isCurrentWeek ? "This week" : "Your week"}</h1>
-            <p className="text-sm text-[#9E8B7E]">{weekLabel}</p>
+            <h1 className="text-2xl font-semibold text-[#3A2A1F]">{weekTitle}</h1>
+            <div className="flex items-center gap-1 mt-0.5">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="flex h-5 w-5 items-center justify-center rounded-full text-[#9E8B7E] hover:bg-[#F5EDE0] hover:text-[#3A2A1F] transition-colors"
+                aria-label="Previous week"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+              <p className="text-sm text-[#9E8B7E]">{weekLabel}</p>
+              <button
+                type="button"
+                onClick={() => navigate(1)}
+                className="flex h-5 w-5 items-center justify-center rounded-full text-[#9E8B7E] hover:bg-[#F5EDE0] hover:text-[#3A2A1F] transition-colors"
+                aria-label="Next week"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
           {(!familyContext || familyContext.isOwner) && (
             <button

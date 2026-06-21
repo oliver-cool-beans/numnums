@@ -80,3 +80,13 @@ export function getWeekLabel(week: number, year: number): string {
   const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
   return `${fmt(monday)} – ${fmt(sunday)}`
 }
+
+export function getRelativeWeekLabel(week: number, year: number): string {
+  const current = getCurrentWeek()
+  if (week === current.week && year === current.year) return "This week"
+  const next = getWeekAtOffset(1)
+  if (week === next.week && year === next.year) return "Next week"
+  const prev = getWeekAtOffset(-1)
+  if (week === prev.week && year === prev.year) return "Last week"
+  return getWeekLabel(week, year)
+}

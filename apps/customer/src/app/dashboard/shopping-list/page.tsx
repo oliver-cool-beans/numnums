@@ -9,7 +9,7 @@ import { useShoppingListFull, useFamilyContext, type EnrichedItem } from "@/lib/
 import { SubPageShell } from "@/components/dashboard";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, getCurrentWeek, getWeekAtOffset, getWeekLabel } from "@/lib/utils";
+import { cn, getCurrentWeek, getWeekAtOffset, getWeekLabel, getRelativeWeekLabel } from "@/lib/utils";
 
 // ─── Category helpers ────────────────────────────────────────────────────────
 
@@ -231,7 +231,7 @@ function WeekNav({
             : "bg-[#F5EDE0] text-[#6F5B4B] hover:bg-[#EAD9C6]",
         )}
       >
-        {isCurrentWeek ? "This week" : getWeekLabel(week, year)}
+        {getRelativeWeekLabel(week, year)}
       </button>
 
       <button
@@ -514,7 +514,7 @@ function ShoppingListInner() {
               className="flex items-center gap-1 text-xs font-medium text-[#7CB342] hover:text-[#558B2F] transition-colors"
             >
               <CalendarDays className="h-3.5 w-3.5" />
-              {isCurrentWeek ? "This week" : getWeekLabel(activeWeek, activeYear)} · View meals
+              {getRelativeWeekLabel(activeWeek, activeYear)} · View meals
             </button>
           </div>
           <span className="shrink-0 text-sm text-[#9E8B7E]">{checkedItems} / {totalItems}</span>
